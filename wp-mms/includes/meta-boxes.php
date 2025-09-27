@@ -355,6 +355,90 @@ function wp_mms_render_po_meta_box( $post ) {
 
 
 /**
+ * Add meta boxes for the Lot CPT.
+ */
+function wp_mms_add_lot_meta_boxes() {
+    add_meta_box(
+        'wp_mms_lot_details',
+        __( 'Lot / Batch Details', 'wp-mms' ),
+        'wp_mms_render_lot_meta_box',
+        'wp_mms_lot',
+        'normal',
+        'high'
+    );
+}
+add_action( 'add_meta_boxes', 'wp_mms_add_lot_meta_boxes' );
+
+/**
+ * Render the HTML for the Lot meta box.
+ *
+ * @param WP_Post $post The post object.
+ */
+function wp_mms_render_lot_meta_box( $post ) {
+    wp_nonce_field( 'wp_mms_save_lot_meta_box_data', 'wp_mms_lot_meta_box_nonce' );
+
+    $product_id = get_post_meta( $post->ID, '_wp_mms_product_id', true );
+    $quantity = get_post_meta( $post->ID, '_wp_mms_quantity', true );
+    $expiry_date = get_post_meta( $post->ID, '_wp_mms_expiry_date', true );
+
+    $products = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC'] );
+    ?>
+    <table class="form-table">
+        <tr valign="top">
+            <th scope="row"><label for="_wp_mms_product_id"><?php _e( 'Product', 'wp-mms' ); ?></label></th>
+            <td>
+                <select id="_wp_mms_product_id" name="_wp_mms_product_id" class="widefat">
+                    <option value=""><?php _e( 'Select a Product', 'wp-mms' ); ?></option>
+                    <?php foreach ( $products as $product ) : ?>
+                        <option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $product_id, $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </td>
+        </tr>
+        <tr valign="top">
+            <th scope="row"><label for="_wp_mms_quantity"><?php _e( 'Quantity in this Lot', 'wp-mms' ); ?></label></th>
+            <td><input type="number" id="_wp_mms_quantity" name="_wp_mms_quantity" value="<?php echo esc_attr( $quantity ); ?>" class="small-text" min="0" step="any" /></td>
+        </tr>
+        <tr valign="top">
+            <th scope="row"><label for="_wp_mms_expiry_date"><?php _e( 'Expiry Date', 'wp-mms' ); ?></label></th>
+            <td><input type="date" id="_wp_mms_expiry_date" name="_wp_mms_expiry_date" value="<?php echo esc_attr( $expiry_date ); ?>" /></td>
+        </tr>
+    </table>
+    <?php
+}
+
+/**
+ * Save the meta box data for the Lot CPT.
+ *
+ * @param int $post_id The ID of the post being saved.
+ */
+function wp_mms_save_lot_meta_box_data( $post_id ) {
+    if ( ! isset( $_POST['wp_mms_lot_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_lot_meta_box_nonce'], 'wp_mms_save_lot_meta_box_data' ) ) {
+        return;
+    }
+    if ( get_post_type( $post_id ) !== 'wp_mms_lot' ) {
+        return;
+    }
+    if ( ! current_user_can( 'edit_mms_lot', $post_id ) ) {
+        return;
+    }
+
+    $fields = [
+        '_wp_mms_product_id' => 'intval',
+        '_wp_mms_quantity' => 'floatval',
+        '_wp_mms_expiry_date' => 'sanitize_text_field',
+    ];
+
+    foreach ( $fields as $key => $sanitize_callback ) {
+        if ( isset( $_POST[ $key ] ) ) {
+            update_post_meta( $post_id, $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
+        }
+    }
+}
+add_action( 'save_post', 'wp_mms_save_lot_meta_box_data' );
+
+
+/**
  * Save the meta box data for the Purchase Order CPT and handle stock updates.
  *
  * @param int $post_id The ID of the post being saved.
@@ -410,41 +494,54 @@ function wp_mms_save_po_meta_box_data( $post_id ) {
     }
     update_post_meta( $post_id, '_wp_mms_line_items', $new_line_items );
 
-    // --- Refactored Stock Adjustment Logic ---
+    // --- Lot-Based Stock Adjustment Logic ---
 
-    // Helper function to adjust stock for a set of items
-    $adjust_stock = function( $items, $operation ) {
-        if ( empty( $items ) || !is_array($items) ) return;
-        foreach ( $items as $item ) {
-            $product_id = $item['product_id'];
-            $quantity = $item['quantity'];
-            if ( empty( $product_id ) || !isset($item['quantity']) ) continue;
+    $create_lots_for_po = function( $po_id, $line_items ) {
+        if( empty($line_items) || !is_array($line_items) ) return;
 
-            $current_stock = get_post_meta( $product_id, '_wp_mms_stock_quantity', true );
-            $new_stock = ( $operation === 'add' )
-                ? floatval( $current_stock ) + floatval( $quantity )
-                : floatval( $current_stock ) - floatval( $quantity );
-            update_post_meta( $product_id, '_wp_mms_stock_quantity', $new_stock );
+        $created_lot_ids = [];
+        foreach( $line_items as $index => $item ) {
+            $lot_number = 'PO-' . $po_id . '-' . ($index + 1);
+            $lot_args = [
+                'post_title'   => $lot_number,
+                'post_status'  => 'publish',
+                'post_type'    => 'wp_mms_lot',
+            ];
+            $new_lot_id = wp_insert_post( $lot_args );
+            if ( !is_wp_error($new_lot_id) ) {
+                update_post_meta( $new_lot_id, '_wp_mms_product_id', $item['product_id'] );
+                update_post_meta( $new_lot_id, '_wp_mms_quantity', $item['quantity'] );
+                $created_lot_ids[] = $new_lot_id;
+            }
         }
+        update_post_meta( $po_id, '_wp_mms_created_lot_ids', $created_lot_ids );
+    };
+
+    $delete_lots_for_po = function( $po_id ) {
+        $lot_ids = get_post_meta( $po_id, '_wp_mms_created_lot_ids', true );
+        if ( !empty($lot_ids) && is_array($lot_ids) ) {
+            foreach( $lot_ids as $lot_id ) {
+                wp_delete_post( $lot_id, true ); // true to force delete
+            }
+        }
+        delete_post_meta( $po_id, '_wp_mms_created_lot_ids' );
     };
 
     // Case 1: Status changed TO received
     if ( $new_status === 'received' && $old_status !== 'received' ) {
-        $adjust_stock( $new_line_items, 'add' );
+        $create_lots_for_po( $post_id, $new_line_items );
         update_post_meta( $post_id, '_wp_mms_date_received', current_time( 'Y-m-d' ) );
     }
     // Case 2: Status changed FROM received
     else if ( $new_status !== 'received' && $old_status === 'received' ) {
-        $adjust_stock( $old_line_items, 'subtract' );
+        $delete_lots_for_po( $post_id );
         delete_post_meta( $post_id, '_wp_mms_date_received' );
     }
-    // Case 3: Status REMAINS received, check if line items changed
+    // Case 3: Status REMAINS received, but line items might have changed
     else if ( $new_status === 'received' && $old_status === 'received' ) {
-        // Only adjust stock if the line items have actually changed.
         if ( $old_line_items != $new_line_items ) {
-            // Revert old stock counts and apply new ones
-            $adjust_stock( $old_line_items, 'subtract' );
-            $adjust_stock( $new_line_items, 'add' );
+            $delete_lots_for_po( $post_id );
+            $create_lots_for_po( $post_id, $new_line_items );
         }
     }
     // Case 4 (implied): Status was not and is not 'received'. Do nothing.
@@ -1086,6 +1183,60 @@ function wp_mms_add_product_cost_meta_box() {
 }
 add_action( 'add_meta_boxes_wp_mms_product', 'wp_mms_add_product_cost_meta_box' );
 add_action( 'add_meta_boxes_wp_mms_product', 'wp_mms_add_exploded_bom_meta_box' );
+add_action( 'add_meta_boxes_wp_mms_product', 'wp_mms_add_product_lots_meta_box' );
+
+/**
+ * Add a meta box to show all lots for a product.
+ */
+function wp_mms_add_product_lots_meta_box( $post ) {
+    add_meta_box(
+        'wp_mms_product_lots',
+        __( 'Inventory Lots / Batches', 'wp-mms' ),
+        'wp_mms_render_product_lots_meta_box',
+        'wp_mms_product',
+        'normal',
+        'low'
+    );
+}
+
+/**
+ * Render the HTML for the product lots meta box.
+ */
+function wp_mms_render_product_lots_meta_box( $post ) {
+    $lot_query = new WP_Query([
+        'post_type' => 'wp_mms_lot',
+        'posts_per_page' => -1,
+        'meta_key' => '_wp_mms_product_id',
+        'meta_value' => $post->ID,
+    ]);
+
+    if ( !$lot_query->have_posts() ) {
+        echo '<p>' . __( 'No lots found for this product.', 'wp-mms' ) . '</p>';
+        return;
+    }
+    ?>
+    <p class="description"><?php _e( 'This table shows the individual lots that make up the total stock quantity for this product.', 'wp-mms' ); ?></p>
+    <table class="wp-list-table widefat fixed striped">
+        <thead>
+            <tr>
+                <th><?php _e( 'Lot / Batch Number', 'wp-mms' ); ?></th>
+                <th><?php _e( 'Quantity', 'wp-mms' ); ?></th>
+                <th><?php _e( 'Expiry Date', 'wp-mms' ); ?></th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php while ( $lot_query->have_posts() ) : $lot_query->the_post(); ?>
+                <tr>
+                    <td><a href="<?php echo esc_url( get_edit_post_link( get_the_ID() ) ); ?>"><?php the_title(); ?></a></td>
+                    <td><?php echo esc_html( get_post_meta( get_the_ID(), '_wp_mms_quantity', true ) ); ?></td>
+                    <td><?php echo esc_html( get_post_meta( get_the_ID(), '_wp_mms_expiry_date', true ) ?: 'N/A' ); ?></td>
+                </tr>
+            <?php endwhile; ?>
+        </tbody>
+    </table>
+    <?php
+    wp_reset_postdata();
+}
 
 
 /**

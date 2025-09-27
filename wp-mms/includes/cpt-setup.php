@@ -313,5 +313,42 @@ function wp_mms_register_cpts() {
         'menu_icon'             => 'dashicons-clipboard',
     );
     register_post_type( 'wp_mms_requisition', $req_args );
+
+    // Lot/Batch CPT
+    $lot_labels = array(
+        'name'                  => _x( 'Lots / Batches', 'Post Type General Name', 'wp-mms' ),
+        'singular_name'         => _x( 'Lot / Batch', 'Post Type Singular Name', 'wp-mms' ),
+        'menu_name'             => __( 'Lots / Batches', 'wp-mms' ),
+        'name_admin_bar'        => __( 'Lot / Batch', 'wp-mms' ),
+        'all_items'             => __( 'All Lots / Batches', 'wp-mms' ),
+        'add_new_item'          => __( 'Add New Lot / Batch', 'wp-mms' ),
+        'add_new'               => __( 'Add New', 'wp-mms' ),
+        'new_item'              => __( 'New Lot / Batch', 'wp-mms' ),
+        'edit_item'             => __( 'Edit Lot / Batch', 'wp-mms' ),
+        'update_item'           => __( 'Update Lot / Batch', 'wp-mms' ),
+        'view_item'             => __( 'View Lot / Batch', 'wp-mms' ),
+    );
+    $lot_args = array(
+        'label'                 => __( 'Lot / Batch', 'wp-mms' ),
+        'description'           => __( 'For tracking specific lots or batches of products', 'wp-mms' ),
+        'labels'                => $lot_labels,
+        'supports'              => array( 'title' ), // Lot Number will be the title
+        'hierarchical'          => false,
+        'public'                => false,
+        'show_ui'               => true,
+        'show_in_menu'          => 'edit.php?post_type=wp_mms_product', // Show under Products menu
+        'capability_type'       => 'mms_lot',
+        'capabilities' => [
+            'edit_post'          => 'edit_mms_lot',
+            'read_post'          => 'read_mms_lot',
+            'delete_post'        => 'delete_mms_lot',
+            'edit_posts'         => 'edit_mms_lots',
+            'edit_others_posts'  => 'edit_others_mms_lots',
+            'publish_posts'      => 'publish_mms_lots',
+            'read_private_posts' => 'read_private_mms_lots',
+            'delete_posts'       => 'delete_mms_lots',
+        ],
+    );
+    register_post_type( 'wp_mms_lot', $lot_args );
 }
 add_action( 'init', 'wp_mms_register_cpts', 0 );

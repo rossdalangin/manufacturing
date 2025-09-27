@@ -31,6 +31,7 @@ require_once WP_MMS_PLUGIN_DIR . 'includes/reports.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/roles.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/kanban-board.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/requisitions.php';
+require_once WP_MMS_PLUGIN_DIR . 'includes/lots.php';
 
 // Activation and deactivation hooks
 register_activation_hook( __FILE__, 'wp_mms_add_roles_and_caps' );

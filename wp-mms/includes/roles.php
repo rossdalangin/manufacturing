@@ -38,7 +38,7 @@ function wp_mms_get_cpt_read_caps( $slug ) {
  */
 function wp_mms_get_all_capabilities() {
     $caps = [];
-    $cpts = ['mms_supplier', 'mms_product', 'mms_purchase_order', 'mms_bom', 'mms_production_order', 'mms_requisition'];
+    $cpts = ['mms_supplier', 'mms_product', 'mms_purchase_order', 'mms_bom', 'mms_production_order', 'mms_requisition', 'mms_lot'];
     foreach ( $cpts as $cpt ) {
         $caps = array_merge( $caps, wp_mms_get_cpt_caps( $cpt ) );
     }
@@ -84,6 +84,7 @@ function wp_mms_add_roles_and_caps() {
     // Add Inventory Controller Role
     $inventory_caps = array_merge(
         wp_mms_get_cpt_caps( 'mms_product' ),
+        wp_mms_get_cpt_caps( 'mms_lot' ),
         wp_mms_get_cpt_read_caps( 'mms_purchase_order' ),
         wp_mms_get_cpt_caps( 'mms_requisition' ),
         ['view_mms_reports', 'read']
