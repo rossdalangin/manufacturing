@@ -11,27 +11,27 @@ if ( ! defined( 'WPINC' ) ) {
 }
 
 /**
- * Add the main admin menu for the plugin.
+ * Add the main admin menu for the plugin, checking for capabilities.
  */
 function wp_mms_add_admin_menu() {
     // Add top-level menu page
     add_menu_page(
         __( 'Manufacturing Management', 'wp-mms' ),
         __( 'MMS', 'wp-mms' ),
-        'manage_options', // Capability
-        'wp_mms', // Menu slug
-        'wp_mms_dashboard_page_html', // Function to display the page
-        'dashicons-admin-generic', // Icon
-        20 // Position
+        'view_mms_reports', // A base capability for viewing the dashboard.
+        'wp_mms',
+        'wp_mms_dashboard_page_html',
+        'dashicons-admin-generic',
+        20
     );
 
     // Add sub-menus for the CPTs
     add_submenu_page(
-        'wp_mms', // Parent slug
+        'wp_mms',
         __( 'Dashboard', 'wp-mms' ),
         __( 'Dashboard', 'wp-mms' ),
-        'manage_options',
-        'wp_mms', // Same slug as parent to make it the default page
+        'view_mms_reports',
+        'wp_mms',
         'wp_mms_dashboard_page_html'
     );
 
@@ -39,7 +39,7 @@ function wp_mms_add_admin_menu() {
         'wp_mms',
         __( 'Suppliers', 'wp-mms' ),
         __( 'Suppliers', 'wp-mms' ),
-        'manage_options',
+        'edit_mms_suppliers', // Capability to view the list table
         'edit.php?post_type=wp_mms_supplier'
     );
 
@@ -47,7 +47,7 @@ function wp_mms_add_admin_menu() {
         'wp_mms',
         __( 'Products', 'wp-mms' ),
         __( 'Products', 'wp-mms' ),
-        'manage_options',
+        'edit_mms_products',
         'edit.php?post_type=wp_mms_product'
     );
 
@@ -55,7 +55,7 @@ function wp_mms_add_admin_menu() {
         'wp_mms',
         __( 'Purchase Orders', 'wp-mms' ),
         __( 'Purchase Orders', 'wp-mms' ),
-        'manage_options',
+        'edit_mms_purchase_orders',
         'edit.php?post_type=wp_mms_purchase_order'
     );
 
@@ -63,7 +63,7 @@ function wp_mms_add_admin_menu() {
         'wp_mms',
         __( 'Bills of Materials', 'wp-mms' ),
         __( 'Bills of Materials', 'wp-mms' ),
-        'manage_options',
+        'edit_mms_boms',
         'edit.php?post_type=wp_mms_bom'
     );
 
@@ -71,7 +71,7 @@ function wp_mms_add_admin_menu() {
         'wp_mms',
         __( 'Production Orders', 'wp-mms' ),
         __( 'Production Orders', 'wp-mms' ),
-        'manage_options',
+        'edit_mms_production_orders',
         'edit.php?post_type=wp_mms_production_order'
     );
 
@@ -79,7 +79,7 @@ function wp_mms_add_admin_menu() {
         'wp_mms',
         __( 'Reports', 'wp-mms' ),
         __( 'Reports', 'wp-mms' ),
-        'manage_options',
+        'view_mms_reports',
         'wp_mms_reports',
         'wp_mms_reports_page_html'
     );

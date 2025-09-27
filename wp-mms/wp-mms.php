@@ -31,6 +31,11 @@ require_once WP_MMS_PLUGIN_DIR . 'includes/admin-menu.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/meta-boxes.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/assets.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/reports.php';
+require_once WP_MMS_PLUGIN_DIR . 'includes/roles.php';
+
+// Activation and deactivation hooks
+register_activation_hook( __FILE__, 'wp_mms_add_roles_and_caps' );
+register_deactivation_hook( __FILE__, 'wp_mms_remove_roles' );
 
 // Initialize the plugin
 function wp_mms_run() {

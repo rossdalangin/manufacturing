@@ -49,7 +49,17 @@ function wp_mms_register_cpts() {
         'has_archive'           => true,
         'exclude_from_search'   => false,
         'publicly_queryable'    => true,
-        'capability_type'       => 'post',
+        'capability_type'       => 'mms_supplier',
+        'capabilities' => [
+            'edit_post'          => 'edit_mms_supplier',
+            'read_post'          => 'read_mms_supplier',
+            'delete_post'        => 'delete_mms_supplier',
+            'edit_posts'         => 'edit_mms_suppliers',
+            'edit_others_posts'  => 'edit_others_mms_suppliers',
+            'publish_posts'      => 'publish_mms_suppliers',
+            'read_private_posts' => 'read_private_mms_suppliers',
+            'delete_posts'       => 'delete_mms_suppliers',
+        ],
         'menu_icon'             => 'dashicons-store',
     );
     register_post_type( 'wp_mms_supplier', $supplier_args );
@@ -89,7 +99,17 @@ function wp_mms_register_cpts() {
         'has_archive'           => true,
         'exclude_from_search'   => false,
         'publicly_queryable'    => true,
-        'capability_type'       => 'post',
+        'capability_type'       => 'mms_product',
+        'capabilities' => [
+            'edit_post'          => 'edit_mms_product',
+            'read_post'          => 'read_mms_product',
+            'delete_post'        => 'delete_mms_product',
+            'edit_posts'         => 'edit_mms_products',
+            'edit_others_posts'  => 'edit_others_mms_products',
+            'publish_posts'      => 'publish_mms_products',
+            'read_private_posts' => 'read_private_mms_products',
+            'delete_posts'       => 'delete_mms_products',
+        ],
         'menu_icon'             => 'dashicons-cart',
     );
     register_post_type( 'wp_mms_product', $product_args );
@@ -129,7 +149,17 @@ function wp_mms_register_cpts() {
         'has_archive'           => true,
         'exclude_from_search'   => false,
         'publicly_queryable'    => true,
-        'capability_type'       => 'post',
+        'capability_type'       => 'mms_purchase_order',
+        'capabilities' => [
+            'edit_post'          => 'edit_mms_purchase_order',
+            'read_post'          => 'read_mms_purchase_order',
+            'delete_post'        => 'delete_mms_purchase_order',
+            'edit_posts'         => 'edit_mms_purchase_orders',
+            'edit_others_posts'  => 'edit_others_mms_purchase_orders',
+            'publish_posts'      => 'publish_mms_purchase_orders',
+            'read_private_posts' => 'read_private_mms_purchase_orders',
+            'delete_posts'       => 'delete_mms_purchase_orders',
+        ],
         'menu_icon'             => 'dashicons-list-view',
     );
     register_post_type( 'wp_mms_purchase_order', $po_args );
@@ -169,7 +199,17 @@ function wp_mms_register_cpts() {
         'has_archive'           => false,
         'exclude_from_search'   => true,
         'publicly_queryable'    => true,
-        'capability_type'       => 'post',
+        'capability_type'       => 'mms_bom',
+        'capabilities' => [
+            'edit_post'          => 'edit_mms_bom',
+            'read_post'          => 'read_mms_bom',
+            'delete_post'        => 'delete_mms_bom',
+            'edit_posts'         => 'edit_mms_boms',
+            'edit_others_posts'  => 'edit_others_mms_boms',
+            'publish_posts'      => 'publish_mms_boms',
+            'read_private_posts' => 'read_private_mms_boms',
+            'delete_posts'       => 'delete_mms_boms',
+        ],
         'menu_icon'             => 'dashicons-hammer',
     );
     register_post_type( 'wp_mms_bom', $bom_args );
@@ -209,7 +249,17 @@ function wp_mms_register_cpts() {
         'has_archive'           => true,
         'exclude_from_search'   => false,
         'publicly_queryable'    => true,
-        'capability_type'       => 'post',
+        'capability_type'       => 'mms_production_order',
+        'capabilities' => [
+            'edit_post'          => 'edit_mms_production_order',
+            'read_post'          => 'read_mms_production_order',
+            'delete_post'        => 'delete_mms_production_order',
+            'edit_posts'         => 'edit_mms_production_orders',
+            'edit_others_posts'  => 'edit_others_mms_production_orders',
+            'publish_posts'      => 'publish_mms_production_orders',
+            'read_private_posts' => 'read_private_mms_production_orders',
+            'delete_posts'       => 'delete_mms_production_orders',
+        ],
         'menu_icon'             => 'dashicons-admin-settings',
     );
     register_post_type( 'wp_mms_production_order', $prod_order_args );
