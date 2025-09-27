@@ -504,7 +504,8 @@ function wp_mms_render_bom_meta_box( $post ) {
     <table id="bom-components" class="wp-list-table widefat fixed striped">
         <thead>
             <tr>
-                <th class="manage-column" style="width: 70%;"><?php _e( 'Component Product', 'wp-mms' ); ?></th>
+                <th class="manage-column column-icon" style="width: 5%;"></th>
+                <th class="manage-column" style="width: 65%;"><?php _e( 'Component Product', 'wp-mms' ); ?></th>
                 <th class="manage-column" style="width: 15%;"><?php _e( 'Quantity', 'wp-mms' ); ?></th>
                 <th class="manage-column" style="width: 15%;"><?php _e( 'Actions', 'wp-mms' ); ?></th>
             </tr>
@@ -515,6 +516,7 @@ function wp_mms_render_bom_meta_box( $post ) {
                 foreach ( $components as $i => $item ) {
                     ?>
                     <tr class="component-item">
+                        <td class="component-handle" style="cursor: move; text-align: center;"><span class="dashicons dashicons-move"></span></td>
                         <td>
                             <select name="wp_mms_components[<?php echo $i; ?>][product_id]" class="widefat">
                                 <option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option>
@@ -537,6 +539,7 @@ function wp_mms_render_bom_meta_box( $post ) {
     </p>
     <script type="text/template" id="component-item-template">
         <tr class="component-item">
+            <td class="component-handle" style="cursor: move; text-align: center;"><span class="dashicons dashicons-move"></span></td>
             <td>
                 <select name="wp_mms_components[{index}][product_id]" class="widefat component-product-select">
                      <option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option>

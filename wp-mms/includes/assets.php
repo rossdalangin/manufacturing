@@ -21,10 +21,15 @@ function wp_mms_admin_enqueue_assets( $hook ) {
     $allowed_post_types = [ 'wp_mms_purchase_order', 'wp_mms_bom' ];
     if ( ( 'post.php' === $hook || 'post-new.php' === $hook ) && isset( $post->post_type ) && in_array( $post->post_type, $allowed_post_types ) ) {
 
+        $deps = ['jquery'];
+        if ( 'wp_mms_bom' === $post->post_type ) {
+            $deps[] = 'jquery-ui-sortable';
+        }
+
         wp_enqueue_script(
             'wp-mms-admin-script',
             WP_MMS_PLUGIN_URL . 'assets/js/admin-scripts.js',
-            array( 'jquery' ),
+            $deps,
             WP_MMS_VERSION,
             true
         );

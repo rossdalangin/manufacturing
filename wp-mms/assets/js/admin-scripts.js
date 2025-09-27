@@ -28,6 +28,23 @@ jQuery(document).ready(function($) {
 
     // --- BOM Repeater ---
 
+    // Make rows sortable
+    $('#components-container').sortable({
+        handle: '.component-handle',
+        stop: function(event, ui) {
+            // Re-index rows after sorting
+            $('#components-container .component-item').each(function(index) {
+                $(this).find('select, input').each(function() {
+                    var name = $(this).attr('name');
+                    if (name) {
+                        var newName = name.replace(/\[\d+\]/, '[' + index + ']');
+                        $(this).attr('name', newName);
+                    }
+                });
+            });
+        }
+    });
+
     // Handle adding a new component item
     $('#add-component-item').on('click', function(e) {
         e.preventDefault();
