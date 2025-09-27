@@ -431,10 +431,12 @@ function wp_mms_save_po_meta_box_data( $post_id ) {
     // Case 1: Status changed TO received
     if ( $new_status === 'received' && $old_status !== 'received' ) {
         $adjust_stock( $new_line_items, 'add' );
+        update_post_meta( $post_id, '_wp_mms_date_received', current_time( 'Y-m-d' ) );
     }
     // Case 2: Status changed FROM received
     else if ( $new_status !== 'received' && $old_status === 'received' ) {
         $adjust_stock( $old_line_items, 'subtract' );
+        delete_post_meta( $post_id, '_wp_mms_date_received' );
     }
     // Case 3: Status REMAINS received, check if line items changed
     else if ( $new_status === 'received' && $old_status === 'received' ) {

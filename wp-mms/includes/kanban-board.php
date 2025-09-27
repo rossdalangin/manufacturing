@@ -29,10 +29,20 @@ function wp_mms_update_order_status_ajax_handler() {
     $new_status = isset( $_POST['new_status'] ) ? sanitize_text_field( $_POST['new_status'] ) : '';
 
     if ( $order_id > 0 && ! empty( $new_status ) ) {
-        // This will trigger the 'save_post' hook we already built,
-        // which contains all the inventory adjustment logic.
-        update_post_meta( $order_id, '_wp_mms_status', $new_status );
-        wp_send_json_success( 'Order status updated.' );
+        // Use wp_update_post to ensure save_post hooks are triggered for inventory adjustments.
+        $post_data = [
+            'ID' => $order_id,
+            'meta_input' => [
+                '_wp_mms_status' => $new_status,
+            ],
+        ];
+        $result = wp_update_post( $post_data, true ); // true to return WP_Error on failure
+
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( $result->get_error_message() );
+        } else {
+            wp_send_json_success( 'Order status updated.' );
+        }
     } else {
         wp_send_json_error( 'Invalid data provided.' );
     }
