@@ -350,5 +350,81 @@ function wp_mms_register_cpts() {
         ],
     );
     register_post_type( 'wp_mms_lot', $lot_args );
+
+    // Work Center CPT
+    $work_center_labels = array(
+        'name'                  => _x( 'Work Centers', 'Post Type General Name', 'wp-mms' ),
+        'singular_name'         => _x( 'Work Center', 'Post Type Singular Name', 'wp-mms' ),
+        'menu_name'             => __( 'Work Centers', 'wp-mms' ),
+        'name_admin_bar'        => __( 'Work Center', 'wp-mms' ),
+        'all_items'             => __( 'All Work Centers', 'wp-mms' ),
+        'add_new_item'          => __( 'Add New Work Center', 'wp-mms' ),
+        'add_new'               => __( 'Add New', 'wp-mms' ),
+        'new_item'              => __( 'New Work Center', 'wp-mms' ),
+        'edit_item'             => __( 'Edit Work Center', 'wp-mms' ),
+        'update_item'           => __( 'Update Work Center', 'wp-mms' ),
+        'view_item'             => __( 'View Work Center', 'wp-mms' ),
+    );
+    $work_center_args = array(
+        'label'                 => __( 'Work Center', 'wp-mms' ),
+        'description'           => __( 'For managing machines, workstations, and assembly lines.', 'wp-mms' ),
+        'labels'                => $work_center_labels,
+        'supports'              => array( 'title', 'editor' ),
+        'hierarchical'          => false,
+        'public'                => false,
+        'show_ui'               => true,
+        'show_in_menu'          => false, // Added to custom menu
+        'capability_type'       => 'mms_work_center',
+        'capabilities' => [
+            'edit_post'          => 'edit_mms_work_center',
+            'read_post'          => 'read_mms_work_center',
+            'delete_post'        => 'delete_mms_work_center',
+            'edit_posts'         => 'edit_mms_work_centers',
+            'edit_others_posts'  => 'edit_others_mms_work_centers',
+            'publish_posts'      => 'publish_mms_work_centers',
+            'read_private_posts' => 'read_private_mms_work_centers',
+            'delete_posts'       => 'delete_mms_work_centers',
+        ],
+        'menu_icon'             => 'dashicons-admin-generic',
+    );
+    register_post_type( 'wp_mms_work_center', $work_center_args );
+
+    // Routing CPT
+    $routing_labels = array(
+        'name'                  => _x( 'Routings', 'Post Type General Name', 'wp-mms' ),
+        'singular_name'         => _x( 'Routing', 'Post Type Singular Name', 'wp-mms' ),
+        'menu_name'             => __( 'Routings', 'wp-mms' ),
+        'name_admin_bar'        => __( 'Routing', 'wp-mms' ),
+        'all_items'             => __( 'All Routings', 'wp-mms' ),
+        'add_new_item'          => __( 'Add New Routing', 'wp-mms' ),
+        'add_new'               => __( 'Add New', 'wp-mms' ),
+        'new_item'              => __( 'New Routing', 'wp-mms' ),
+        'edit_item'             => __( 'Edit Routing', 'wp-mms' ),
+        'update_item'           => __( 'Update Routing', 'wp-mms' ),
+        'view_item'             => __( 'View Routing', 'wp-mms' ),
+    );
+    $routing_args = array(
+        'label'                 => __( 'Routing', 'wp-mms' ),
+        'description'           => __( 'For defining standard production workflow templates.', 'wp-mms' ),
+        'labels'                => $routing_labels,
+        'supports'              => array( 'title', 'editor' ),
+        'hierarchical'          => false,
+        'public'                => false,
+        'show_ui'               => true,
+        'show_in_menu'          => false, // Added to custom menu
+        'capability_type'       => 'mms_routing',
+         'capabilities' => [
+            'edit_post'          => 'edit_mms_routing',
+            'read_post'          => 'read_mms_routing',
+            'delete_post'        => 'delete_mms_routing',
+            'edit_posts'         => 'edit_mms_routings',
+            'edit_others_posts'  => 'edit_others_mms_routings',
+            'publish_posts'      => 'publish_mms_routings',
+            'read_private_posts' => 'read_private_mms_routings',
+            'delete_posts'       => 'delete_mms_routings',
+        ],
+        'menu_icon'             => 'dashicons-randomize',
+    );
+    register_post_type( 'wp_mms_routing', $routing_args );
 }
 add_action( 'init', 'wp_mms_register_cpts', 0 );

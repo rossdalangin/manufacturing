@@ -110,6 +110,105 @@ function wp_mms_handle_supplier_export() {
 add_action( 'admin_init', 'wp_mms_handle_supplier_export' );
 
 /**
+ * Get and process capacity planning data.
+ * @return array
+ */
+function wp_mms_get_capacity_planning_data() {
+    // 1. Get all work centers and initialize their load to 0.
+    $work_centers_query = new WP_Query(['post_type' => 'wp_mms_work_center', 'posts_per_page' => -1]);
+    $capacity_data = [];
+    if ($work_centers_query->have_posts()) {
+        while ($work_centers_query->have_posts()) {
+            $work_centers_query->the_post();
+            $capacity_data[get_the_ID()] = [
+                'name' => get_the_title(),
+                'total_load' => 0,
+            ];
+        }
+    }
+    wp_reset_postdata();
+
+    // 2. Get all active production orders.
+    $production_orders_query = new WP_Query([
+        'post_type' => 'wp_mms_production_order',
+        'posts_per_page' => -1,
+        'meta_query' => [
+            [
+                'key' => '_wp_mms_status',
+                'value' => ['pending', 'in_progress'],
+                'compare' => 'IN',
+            ],
+        ],
+    ]);
+
+    // 3. Loop through orders and calculate load.
+    if ($production_orders_query->have_posts()) {
+        while ($production_orders_query->have_posts()) {
+            $production_orders_query->the_post();
+            $order_id = get_the_ID();
+            $quantity = (int) get_post_meta($order_id, '_wp_mms_quantity', true);
+            $routing_id = (int) get_post_meta($order_id, '_wp_mms_routing_id', true);
+
+            if (!$routing_id || !$quantity) {
+                continue;
+            }
+
+            $routing_steps = get_post_meta($routing_id, '_wp_mms_routing_steps', true);
+            if (empty($routing_steps) || !is_array($routing_steps)) {
+                continue;
+            }
+
+            foreach ($routing_steps as $step) {
+                $work_center_id = isset($step['work_center_id']) ? (int) $step['work_center_id'] : 0;
+                if ($work_center_id && isset($capacity_data[$work_center_id])) {
+                    $setup_time = isset($step['setup_time']) ? (float) $step['setup_time'] : 0;
+                    $run_time = isset($step['run_time']) ? (float) $step['run_time'] : 0;
+                    $step_load = $setup_time + ($run_time * $quantity);
+                    $capacity_data[$work_center_id]['total_load'] += $step_load;
+                }
+            }
+        }
+    }
+    wp_reset_postdata();
+
+    return $capacity_data;
+}
+
+/**
+ * Display the capacity planning report page HTML.
+ */
+function wp_mms_capacity_planning_report_html() {
+    ?>
+    <div class="wrap">
+        <h1><?php _e( 'Capacity Planning Report', 'wp-mms' ); ?></h1>
+        <p><?php _e( 'This report shows the total scheduled production load (in hours) for each work center based on all pending and in-progress production orders.', 'wp-mms' ); ?></p>
+
+        <?php
+        $capacity_data = wp_mms_get_capacity_planning_data();
+        if ( !empty($capacity_data) ) :
+        ?>
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th scope="col"><?php _e( 'Work Center', 'wp-mms' ); ?></th>
+                    <th scope="col"><?php _e( 'Total Scheduled Load (Hours)', 'wp-mms' ); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ( $capacity_data as $wc_id => $data ) : ?>
+                    <tr>
+                        <td><a href="<?php echo esc_url( get_edit_post_link( $wc_id ) ); ?>"><?php echo esc_html( $data['name'] ); ?></a></td>
+                        <td><?php echo esc_html( number_format( $data['total_load'], 2 ) ); ?></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php else : echo '<p>' . __( 'No work centers or production orders found to generate a report.', 'wp-mms' ) . '</p>'; endif; ?>
+    </div>
+    <?php
+}
+
+/**
  * Get and process supplier performance data efficiently.
  * @return array
  */

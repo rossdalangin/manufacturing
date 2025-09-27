@@ -43,3 +43,36 @@
     font-size: 12px;
     color: #666;
 }
+
+/* --- Routing Designer --- */
+#routing-steps-container .routing-step-item {
+    background: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+}
+
+#routing-steps-container .routing-step-item td {
+    padding: 12px;
+    vertical-align: middle;
+}
+
+#routing-steps-container .routing-step-handle {
+    cursor: move;
+    color: #999;
+}
+
+#routing-steps-container .routing-step-handle:hover {
+    color: #333;
+}
+
+/* Style for the sortable placeholder */
+#routing-steps-container .ui-sortable-placeholder {
+    background: #f0f0f1 !important;
+    border: 1px dashed #ccc !important;
+    visibility: visible !important;
+    height: 60px;
+}
+
+#routing-steps-container .ui-sortable-placeholder td {
+    height: 60px;
+}

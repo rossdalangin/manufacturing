@@ -148,6 +148,78 @@ jQuery(document).ready(function($) {
         bomSelector.init();
     }
 
+    var routingSelector = {
+        init: function() {
+            $('#wp_mms_product_id').on('change', this.fetchRouting);
+            // Initial load if a product is already selected
+            if ($('#wp_mms_product_id').val()) {
+                this.fetchRouting.call($('#wp_mms_product_id'));
+            }
+        },
+
+        fetchRouting: function() {
+            var productId = $(this).val();
+            var $container = $('#production-routing-container');
+            var $table = $('#production-routing-steps');
+            var $tableBody = $('#production-routing-steps-body');
+            var $description = $container.find('p.description');
+
+            $tableBody.empty();
+            $table.hide();
+            $description.text('Loading...').show();
+
+            if (!productId) {
+                $description.text('Select a product above to load its default routing.');
+                return;
+            }
+
+            $.post(ajaxurl, {
+                action: 'get_routing_for_product',
+                product_id: productId,
+                nonce: wp_mms_data.get_routing_nonce
+            }, function(response) {
+                if (response.success && response.data.steps && response.data.steps.length) {
+                    $('#wp_mms_routing_id').val(response.data.routing_id);
+                    $.each(response.data.steps, function(index, step) {
+                        var workers_dropdown = $('<select name="wp_mms_routing_assignments[' + index + ']"></select>');
+                        workers_dropdown.append($('<option>', { value: '', text: 'Unassigned' }));
+
+                        if (wp_mms_data.workers && wp_mms_data.workers.length) {
+                            $.each(wp_mms_data.workers, function(i, worker) {
+                                workers_dropdown.append($('<option>', {
+                                    value: worker.ID,
+                                    text: worker.display_name
+                                }));
+                            });
+                        }
+
+                        var assigned_worker = (wp_mms_data.routing_assignments && wp_mms_data.routing_assignments[index]) ? wp_mms_data.routing_assignments[index] : '';
+                        if (assigned_worker) {
+                            workers_dropdown.val(assigned_worker);
+                        }
+
+                        var row = $('<tr>')
+                            .append( $('<td>').text(step.name) )
+                            .append( $('<td>').text(step.work_center_name) )
+                            .append( $('<td>').append(workers_dropdown) );
+
+                        $tableBody.append(row);
+                    });
+                    $description.hide();
+                    $table.show();
+                } else {
+                     $('#wp_mms_routing_id').val('');
+                    $description.text('No default routing found for this product.').show();
+                    $table.hide();
+                }
+            });
+        }
+    };
+
+    if ($('#production-routing-container').length) {
+        routingSelector.init();
+    }
+
     // --- BOM Repeater ---
     $('#components-container').sortable({
         handle: '.component-handle',
@@ -225,6 +297,25 @@ jQuery(document).ready(function($) {
         });
     });
 
+    // --- Product Meta Box ---
+    if ($('body.post-type-wp_mms_product').length) {
+        var productMeta = {
+            init: function() {
+                this.toggleFinishedGoodFields();
+                $('#wp_mms_item_type').on('change', this.toggleFinishedGoodFields);
+            },
+            toggleFinishedGoodFields: function() {
+                var itemType = $('#wp_mms_item_type').val();
+                if (itemType === 'finished_good') {
+                    $('.finished-good-field').show();
+                } else {
+                    $('.finished-good-field').hide();
+                }
+            }
+        };
+        productMeta.init();
+    }
+
     // --- Kanban Board ---
     if ($('#mms-kanban-board').length) {
         $('.kanban-column-body').sortable({
@@ -250,4 +341,44 @@ jQuery(document).ready(function($) {
             }
         }).disableSelection();
     }
+
+    // --- Routing Repeater ---
+    $('#routing-steps-container').sortable({
+        handle: '.routing-step-handle',
+        stop: function(event, ui) {
+            // Re-index rows after sorting
+            $('#routing-steps-container .routing-step-item').each(function(index) {
+                $(this).find('select, input').each(function() {
+                    var name = $(this).attr('name');
+                    if (name) {
+                        var newName = name.replace(/\[\d+\]/, '[' + index + ']');
+                        $(this).attr('name', newName);
+                    }
+                });
+            });
+        }
+    });
+
+    $('#add-routing-step-item').on('click', function(e) {
+        e.preventDefault();
+        var template = $('#routing-step-template').html();
+        var newIndex = $('#routing-steps-container .routing-step-item').length;
+        template = template.replace(/{index}/g, newIndex);
+        $('#routing-steps-container').append(template);
+    });
+
+    $('#routing-steps-container').on('click', '.remove-routing-step-item', function(e) {
+        e.preventDefault();
+        $(this).closest('.routing-step-item').remove();
+        // Re-index remaining rows
+        $('#routing-steps-container .routing-step-item').each(function(index) {
+            $(this).find('select, input').each(function() {
+                var name = $(this).attr('name');
+                if (name) {
+                    var newName = name.replace(/\[\d+\]/, '[' + index + ']');
+                    $(this).attr('name', newName);
+                }
+            });
+        });
+    });
 });
