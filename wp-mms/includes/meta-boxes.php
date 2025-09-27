@@ -51,24 +51,68 @@ function wp_mms_render_supplier_meta_box( $post ) {
 }
 
 /**
- * Save the meta box data when the post is saved.
+ * Save the meta box data when the post is saved and log the changes.
  */
-function wp_mms_save_supplier_meta_box_data( $post_id ) {
+function wp_mms_save_supplier_meta_box_data( $post_id, $post, $update ) {
     if ( ! isset( $_POST['wp_mms_supplier_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_supplier_meta_box_nonce'], 'wp_mms_save_supplier_meta_box_data' ) ) return;
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
     if ( ! current_user_can( 'edit_mms_supplier', $post_id ) ) return;
 
+    // Log creation of a new supplier
+    if ( ! $update ) {
+        wp_mms_log_action( 'supplier_created', [
+            'object_id'   => $post_id,
+            'object_type' => 'Supplier',
+            'description' => 'created supplier',
+        ]);
+        // No need to log individual fields for a new post
+    }
+
     $fields = [
-        'wp_mms_contact_name' => 'sanitize_text_field', 'wp_mms_email' => 'sanitize_email', 'wp_mms_phone' => 'sanitize_text_field', 'wp_mms_website' => 'esc_url_raw',
-        'wp_mms_address' => 'sanitize_textarea_field', 'wp_mms_lead_time' => 'intval', 'wp_mms_notes' => 'sanitize_textarea_field',
+        'wp_mms_contact_name' => [ 'label' => 'Contact Name', 'sanitize' => 'sanitize_text_field' ],
+        'wp_mms_email'        => [ 'label' => 'Email', 'sanitize' => 'sanitize_email' ],
+        'wp_mms_phone'        => [ 'label' => 'Phone', 'sanitize' => 'sanitize_text_field' ],
+        'wp_mms_website'      => [ 'label' => 'Website', 'sanitize' => 'esc_url_raw' ],
+        'wp_mms_address'      => [ 'label' => 'Address', 'sanitize' => 'sanitize_textarea_field' ],
+        'wp_mms_lead_time'    => [ 'label' => 'Lead Time', 'sanitize' => 'intval' ],
+        'wp_mms_notes'        => [ 'label' => 'Notes', 'sanitize' => 'sanitize_textarea_field' ],
     ];
-    foreach ( $fields as $key => $sanitize_callback ) {
+
+    foreach ( $fields as $key => $details ) {
         if ( isset( $_POST[ $key ] ) ) {
-            update_post_meta( $post_id, '_' . $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
+            $old_value = get_post_meta( $post_id, '_' . $key, true );
+            $new_value = call_user_func( $details['sanitize'], $_POST[ $key ] );
+
+            if ( $update && $old_value != $new_value ) {
+                wp_mms_log_action( 'supplier_updated', [
+                    'object_id'   => $post_id,
+                    'object_type' => 'Supplier',
+                    'description' => "updated {$details['label']}",
+                    'old_value'   => $old_value,
+                    'new_value'   => $new_value,
+                ]);
+            }
+            update_post_meta( $post_id, '_' . $key, $new_value );
         }
     }
 }
-add_action( 'save_post_wp_mms_supplier', 'wp_mms_save_supplier_meta_box_data' );
+add_action( 'save_post_wp_mms_supplier', 'wp_mms_save_supplier_meta_box_data', 10, 3 );
+
+/**
+ * Log the deletion of a supplier.
+ */
+function wp_mms_log_supplier_deletion( $post_id ) {
+    $post = get_post( $post_id );
+    if ( $post->post_type === 'wp_mms_supplier' ) {
+        wp_mms_log_action( 'supplier_deleted', [
+            'object_id'   => $post_id,
+            'object_type' => 'Supplier',
+            'description' => 'deleted supplier',
+            'old_value'   => $post->post_title,
+        ]);
+    }
+}
+add_action( 'before_delete_post', 'wp_mms_log_supplier_deletion' );
 
 /**
  * Add meta boxes for the Product CPT.
@@ -113,24 +157,65 @@ function wp_mms_render_product_meta_box( $post ) {
 }
 
 /**
- * Save the meta box data for the Product CPT.
+ * Save the meta box data for the Product CPT and log changes.
  */
-function wp_mms_save_product_meta_box_data( $post_id ) {
+function wp_mms_save_product_meta_box_data( $post_id, $post, $update ) {
     if ( ! isset( $_POST['wp_mms_product_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_product_meta_box_nonce'], 'wp_mms_save_product_meta_box_data' ) ) return;
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
     if ( ! current_user_can( 'edit_mms_product', $post_id ) ) return;
+
+    if ( ! $update ) {
+        wp_mms_log_action( 'product_created', [
+            'object_id'   => $post_id,
+            'object_type' => 'Product',
+            'description' => 'created product',
+        ]);
+    }
+
     $fields = [
-        'wp_mms_sku' => 'sanitize_text_field', 'wp_mms_reorder_point' => 'floatval', 'wp_mms_item_type' => 'sanitize_text_field',
-        'wp_mms_warehouse_location' => 'sanitize_text_field', 'wp_mms_unit_cost' => 'floatval',
-        'wp_mms_selling_price' => 'floatval',
+        'wp_mms_sku'                => [ 'label' => 'SKU', 'sanitize' => 'sanitize_text_field' ],
+        'wp_mms_reorder_point'      => [ 'label' => 'Reorder Point', 'sanitize' => 'floatval' ],
+        'wp_mms_item_type'          => [ 'label' => 'Item Type', 'sanitize' => 'sanitize_text_field' ],
+        'wp_mms_warehouse_location' => [ 'label' => 'Warehouse Location', 'sanitize' => 'sanitize_text_field' ],
+        'wp_mms_unit_cost'          => [ 'label' => 'Unit Cost', 'sanitize' => 'floatval' ],
+        'wp_mms_selling_price'      => [ 'label' => 'Selling Price', 'sanitize' => 'floatval' ],
     ];
-    foreach ( $fields as $key => $sanitize_callback ) {
+
+    foreach ( $fields as $key => $details ) {
         if ( isset( $_POST[ $key ] ) ) {
-            update_post_meta( $post_id, '_' . $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
+            $old_value = get_post_meta( $post_id, '_' . $key, true );
+            $new_value = call_user_func( $details['sanitize'], $_POST[ $key ] );
+
+            if ( $update && $old_value != $new_value ) {
+                wp_mms_log_action( 'product_updated', [
+                    'object_id'   => $post_id,
+                    'object_type' => 'Product',
+                    'description' => "updated {$details['label']}",
+                    'old_value'   => $old_value,
+                    'new_value'   => $new_value,
+                ]);
+            }
+            update_post_meta( $post_id, '_' . $key, $new_value );
         }
     }
 }
-add_action( 'save_post_wp_mms_product', 'wp_mms_save_product_meta_box_data' );
+add_action( 'save_post_wp_mms_product', 'wp_mms_save_product_meta_box_data', 10, 3 );
+
+/**
+ * Log the deletion of a product.
+ */
+function wp_mms_log_product_deletion( $post_id ) {
+    $post = get_post( $post_id );
+    if ( $post->post_type === 'wp_mms_product' ) {
+        wp_mms_log_action( 'product_deleted', [
+            'object_id'   => $post_id,
+            'object_type' => 'Product',
+            'description' => 'deleted product',
+            'old_value'   => $post->post_title,
+        ]);
+    }
+}
+add_action( 'before_delete_post', 'wp_mms_log_product_deletion' );
 
 /**
  * Add meta boxes for the Purchase Order CPT.
@@ -180,24 +265,44 @@ function wp_mms_render_po_meta_box( $post ) {
 }
 
 /**
- * Save the meta box data for the Purchase Order CPT and handle stock updates.
+ * Save the meta box data for the Purchase Order CPT, handle stock updates, and log changes.
  */
-function wp_mms_save_po_meta_box_data( $post_id ) {
+function wp_mms_save_po_meta_box_data( $post_id, $post, $update ) {
     if ( ! isset( $_POST['wp_mms_po_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_po_meta_box_nonce'], 'wp_mms_save_po_meta_box_data' ) ) return;
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
     if ( ! current_user_can( 'edit_mms_purchase_order', $post_id ) ) return;
 
-    $old_status = get_post_meta( $post_id, '_wp_mms_status', true );
+    if ( ! $update ) {
+        wp_mms_log_action( 'po_created', [
+            'object_id'   => $post_id,
+            'object_type' => 'Purchase Order',
+            'description' => 'created purchase order',
+        ]);
+    }
+
     $old_line_items = get_post_meta( $post_id, '_wp_mms_line_items', true ) ?: [];
-    $new_status = isset( $_POST['wp_mms_status'] ) ? sanitize_text_field( $_POST['wp_mms_status'] ) : '';
+
     $fields = [
-        'wp_mms_supplier_id' => 'intval', 'wp_mms_status' => 'sanitize_text_field', 'wp_mms_order_date' => 'sanitize_text_field', 'wp_mms_expected_date' => 'sanitize_text_field',
+        'wp_mms_supplier_id'    => [ 'label' => 'Supplier', 'sanitize' => 'intval' ],
+        'wp_mms_status'         => [ 'label' => 'Status', 'sanitize' => 'sanitize_text_field' ],
+        'wp_mms_order_date'     => [ 'label' => 'Order Date', 'sanitize' => 'sanitize_text_field' ],
+        'wp_mms_expected_date'  => [ 'label' => 'Expected Date', 'sanitize' => 'sanitize_text_field' ],
     ];
-    foreach ( $fields as $key => $sanitize_callback ) {
+
+    foreach ( $fields as $key => $details ) {
         if ( isset( $_POST[ $key ] ) ) {
-            update_post_meta( $post_id, '_' . $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
+            $old_value = get_post_meta( $post_id, '_' . $key, true );
+            $new_value = call_user_func( $details['sanitize'], $_POST[ $key ] );
+            if ( $update && $old_value != $new_value ) {
+                wp_mms_log_action( 'po_updated', [
+                    'object_id'   => $post_id, 'object_type' => 'Purchase Order', 'description' => "updated {$details['label']}",
+                    'old_value'   => $old_value, 'new_value'   => $new_value,
+                ]);
+            }
+            update_post_meta( $post_id, '_' . $key, $new_value );
         }
     }
+
     $new_line_items = [];
     if ( isset( $_POST['wp_mms_line_items'] ) && is_array( $_POST['wp_mms_line_items'] ) ) {
         foreach ( $_POST['wp_mms_line_items'] as $item ) {
@@ -205,7 +310,18 @@ function wp_mms_save_po_meta_box_data( $post_id ) {
             $new_line_items[] = [ 'product_id' => intval( $item['product_id'] ), 'quantity' => intval( $item['quantity'] ), 'unit_price' => floatval( $item['unit_price'] ) ];
         }
     }
+
+    if ( $update && serialize($old_line_items) !== serialize($new_line_items) ) {
+        wp_mms_log_action( 'po_updated', [
+            'object_id'   => $post_id, 'object_type' => 'Purchase Order', 'description' => 'updated line items',
+            'old_value'   => $old_line_items, 'new_value'   => $new_line_items,
+        ]);
+    }
     update_post_meta( $post_id, '_wp_mms_line_items', $new_line_items );
+
+    // Grab new status directly from post meta after update for accurate comparison
+    $new_status = get_post_meta( $post_id, '_wp_mms_status', true );
+    $old_status = $fields['wp_mms_status']['sanitize']( $_POST['wp_mms_status'] ?? '' ) == $new_status ? $new_status : get_post_meta( $post_id, '_wp_mms_status', true ); // A bit redundant, but ensures we have the true old status before this save.
 
     $affected_products = [];
     foreach($new_line_items as $item) { if($item['product_id']) $affected_products[] = $item['product_id']; }
@@ -255,7 +371,23 @@ function wp_mms_save_po_meta_box_data( $post_id ) {
         }
     }
 }
-add_action( 'save_post_wp_mms_purchase_order', 'wp_mms_save_po_meta_box_data' );
+add_action( 'save_post_wp_mms_purchase_order', 'wp_mms_save_po_meta_box_data', 10, 3 );
+
+/**
+ * Log the deletion of a purchase order.
+ */
+function wp_mms_log_po_deletion( $post_id ) {
+    $post = get_post( $post_id );
+    if ( $post->post_type === 'wp_mms_purchase_order' ) {
+        wp_mms_log_action( 'po_deleted', [
+            'object_id'   => $post_id,
+            'object_type' => 'Purchase Order',
+            'description' => 'deleted purchase order',
+            'old_value'   => $post->post_title,
+        ]);
+    }
+}
+add_action( 'before_delete_post', 'wp_mms_log_po_deletion' );
 
 /**
  * Add meta boxes for the BOM CPT.
@@ -293,15 +425,34 @@ function wp_mms_render_bom_meta_box( $post ) {
 }
 
 /**
- * Save the meta box data for the BOM CPT.
+ * Save the meta box data for the BOM CPT and log changes.
  */
-function wp_mms_save_bom_meta_box_data( $post_id ) {
+function wp_mms_save_bom_meta_box_data( $post_id, $post, $update ) {
     if ( ! isset( $_POST['wp_mms_bom_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_bom_meta_box_nonce'], 'wp_mms_save_bom_meta_box_data' ) ) return;
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
     if ( ! current_user_can( 'edit_mms_bom', $post_id ) ) return;
-    if ( isset( $_POST['wp_mms_finished_product_id'] ) ) {
-        update_post_meta( $post_id, '_wp_mms_finished_product_id', intval( $_POST['wp_mms_finished_product_id'] ) );
+
+    if ( ! $update ) {
+        wp_mms_log_action( 'bom_created', [
+            'object_id'   => $post_id,
+            'object_type' => 'BOM',
+            'description' => 'created BOM',
+        ]);
     }
+
+    $old_product_id = get_post_meta( $post_id, '_wp_mms_finished_product_id', true );
+    if ( isset( $_POST['wp_mms_finished_product_id'] ) ) {
+        $new_product_id = intval( $_POST['wp_mms_finished_product_id'] );
+        if ( $update && $old_product_id != $new_product_id ) {
+            wp_mms_log_action( 'bom_updated', [
+                'object_id'   => $post_id, 'object_type' => 'BOM', 'description' => 'updated Finished Product',
+                'old_value'   => get_the_title($old_product_id), 'new_value' => get_the_title($new_product_id),
+            ]);
+        }
+        update_post_meta( $post_id, '_wp_mms_finished_product_id', $new_product_id );
+    }
+
+    $old_components = get_post_meta( $post_id, '_wp_mms_components', true ) ?: [];
     $new_components = [];
     if ( isset( $_POST['wp_mms_components'] ) && is_array( $_POST['wp_mms_components'] ) ) {
         foreach ( $_POST['wp_mms_components'] as $item ) {
@@ -319,10 +470,33 @@ function wp_mms_save_bom_meta_box_data( $post_id ) {
             $new_components[] = $new_item;
         }
     }
+
+    if ( $update && serialize($old_components) !== serialize($new_components) ) {
+        wp_mms_log_action( 'bom_updated', [
+            'object_id'   => $post_id, 'object_type' => 'BOM', 'description' => 'updated components list',
+            'old_value'   => $old_components, 'new_value' => $new_components,
+        ]);
+    }
     update_post_meta( $post_id, '_wp_mms_components', $new_components );
     wp_mms_calculate_bom_cost( $post_id );
 }
-add_action( 'save_post_wp_mms_bom', 'wp_mms_save_bom_meta_box_data' );
+add_action( 'save_post_wp_mms_bom', 'wp_mms_save_bom_meta_box_data', 10, 3 );
+
+/**
+ * Log the deletion of a BOM.
+ */
+function wp_mms_log_bom_deletion( $post_id ) {
+    $post = get_post( $post_id );
+    if ( $post->post_type === 'wp_mms_bom' ) {
+        wp_mms_log_action( 'bom_deleted', [
+            'object_id'   => $post_id,
+            'object_type' => 'BOM',
+            'description' => 'deleted BOM',
+            'old_value'   => $post->post_title,
+        ]);
+    }
+}
+add_action( 'before_delete_post', 'wp_mms_log_bom_deletion' );
 
 /**
  * Add meta boxes for the Production Order CPT.
@@ -557,33 +731,56 @@ function wp_mms_recursively_consume_bom( $bom_id, $quantity_produced, &$consumed
 }
 
 /**
- * Save the meta box data for the Production Order CPT and handle inventory adjustments.
+ * Save the meta box data for the Production Order CPT, handle inventory adjustments, and log changes.
  */
-function wp_mms_save_production_order_meta_box_data( $post_id ) {
-     if ( ! isset( $_POST['wp_mms_production_order_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_production_order_meta_box_nonce'], 'wp_mms_save_production_order_meta_box_data' ) ) return;
+function wp_mms_save_production_order_meta_box_data( $post_id, $post, $update ) {
+    if ( ! isset( $_POST['wp_mms_production_order_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_production_order_meta_box_nonce'], 'wp_mms_save_production_order_meta_box_data' ) ) return;
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
     if ( ! current_user_can( 'edit_mms_production_order', $post_id ) ) return;
 
-    $old_status = get_post_meta( $post_id, '_wp_mms_status', true );
+    if ( ! $update ) {
+        wp_mms_log_action( 'prod_order_created', [
+            'object_id'   => $post_id, 'object_type' => 'Production Order', 'description' => 'created production order',
+        ]);
+    }
+
     $old_details = [
         'product_id' => get_post_meta( $post_id, '_wp_mms_product_id', true ), 'quantity' => get_post_meta( $post_id, '_wp_mms_quantity', true ),
         'bom_id' => get_post_meta( $post_id, '_wp_mms_bom_id', true ), 'consumed_lots' => get_post_meta( $post_id, '_wp_mms_consumed_lots', true ),
         'output_lot_id' => get_post_meta( $post_id, '_wp_mms_output_lot_id', true ),
     ];
-    $new_status = isset( $_POST['wp_mms_status'] ) ? sanitize_text_field( $_POST['wp_mms_status'] ) : '';
-    $new_details = [
-        'product_id' => isset( $_POST['wp_mms_product_id'] ) ? intval( $_POST['wp_mms_product_id'] ) : 0, 'quantity' => isset( $_POST['wp_mms_quantity'] ) ? intval( $_POST['wp_mms_quantity'] ) : 0,
-        'bom_id' => isset( $_POST['wp_mms_bom_id'] ) ? intval( $_POST['wp_mms_bom_id'] ) : 0,
-    ];
+
     $fields = [
-        'wp_mms_product_id' => 'intval', 'wp_mms_bom_id' => 'intval', 'wp_mms_quantity' => 'intval', 'wp_mms_status' => 'sanitize_text_field',
-        'wp_mms_start_date' => 'sanitize_text_field', 'wp_mms_end_date' => 'sanitize_text_field', '_wp_mms_planned_duration_hours' => 'floatval',
+        'wp_mms_product_id'             => [ 'label' => 'Product', 'sanitize' => 'intval', 'is_title' => true ],
+        'wp_mms_bom_id'                 => [ 'label' => 'BOM', 'sanitize' => 'intval', 'is_title' => true ],
+        'wp_mms_quantity'               => [ 'label' => 'Quantity', 'sanitize' => 'intval' ],
+        'wp_mms_status'                 => [ 'label' => 'Status', 'sanitize' => 'sanitize_text_field' ],
+        'wp_mms_start_date'             => [ 'label' => 'Start Date', 'sanitize' => 'sanitize_text_field' ],
+        'wp_mms_end_date'               => [ 'label' => 'End Date', 'sanitize' => 'sanitize_text_field' ],
+        'wp_mms_planned_duration_hours' => [ 'label' => 'Planned Duration', 'sanitize' => 'floatval' ],
     ];
-    foreach ( $fields as $key => $sanitize_callback ) {
+
+    $new_details = [];
+    foreach ( $fields as $key => $details ) {
         if ( isset( $_POST[ $key ] ) ) {
-            update_post_meta( $post_id, '_' . $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
+            $old_value = get_post_meta( $post_id, '_' . $key, true );
+            $new_value = call_user_func( $details['sanitize'], $_POST[ $key ] );
+            $new_details[ str_replace('wp_mms_', '', $key) ] = $new_value;
+
+            if ( $update && $old_value != $new_value ) {
+                $old_display = !empty($details['is_title']) ? get_the_title($old_value) : $old_value;
+                $new_display = !empty($details['is_title']) ? get_the_title($new_value) : $new_value;
+                wp_mms_log_action( 'prod_order_updated', [
+                    'object_id'   => $post_id, 'object_type' => 'Production Order', 'description' => "updated {$details['label']}",
+                    'old_value'   => $old_display, 'new_value'   => $new_display,
+                ]);
+            }
+            update_post_meta( $post_id, '_' . $key, $new_value );
         }
     }
+
+    $old_status = $old_details['status'] ?? get_post_meta( $post_id, '_wp_mms_status', true );
+    $new_status = $new_details['status'];
 
     // Record the start time when status changes to 'in_progress'
     if ( $new_status === 'in_progress' && $old_status !== 'in_progress' ) {
@@ -660,6 +857,11 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
         }
     }
     if ( $old_scrapped_items != $new_scrapped_items ) {
+        wp_mms_log_action( 'prod_order_updated', [
+            'object_id'   => $post_id, 'object_type' => 'Production Order', 'description' => 'updated scrap records',
+            'old_value'   => $old_scrapped_items, 'new_value'   => $new_scrapped_items,
+        ]);
+
         $affected_scrap_products = [];
         $old_consumed_scrap = get_post_meta( $post_id, '_wp_mms_consumed_scrap_lots', true );
         if ( !empty($old_consumed_scrap) && is_array($old_consumed_scrap) ) {
@@ -715,7 +917,23 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
         }
     }
 }
-add_action( 'save_post_wp_mms_production_order', 'wp_mms_save_production_order_meta_box_data' );
+add_action( 'save_post_wp_mms_production_order', 'wp_mms_save_production_order_meta_box_data', 10, 3 );
+
+/**
+ * Log the deletion of a production order.
+ */
+function wp_mms_log_prod_order_deletion( $post_id ) {
+    $post = get_post( $post_id );
+    if ( $post->post_type === 'wp_mms_production_order' ) {
+        wp_mms_log_action( 'prod_order_deleted', [
+            'object_id'   => $post_id,
+            'object_type' => 'Production Order',
+            'description' => 'deleted production order',
+            'old_value'   => $post->post_title,
+        ]);
+    }
+}
+add_action( 'before_delete_post', 'wp_mms_log_prod_order_deletion' );
 
 /**
  * AJAX handler to calculate and record the actual duration of a production order.
@@ -742,7 +960,17 @@ function wp_mms_record_actual_duration_ajax_handler() {
     $duration_formatted = number_format( $duration_hours, 2 );
 
     // Save the calculated duration
+    $old_duration = get_post_meta( $order_id, '_wp_mms_actual_duration_hours', true );
     update_post_meta( $order_id, '_wp_mms_actual_duration_hours', $duration_formatted );
+
+    // Log the action
+    wp_mms_log_action( 'prod_order_updated', [
+        'object_id'   => $order_id,
+        'object_type' => 'Production Order',
+        'description' => 'recorded Actual Duration',
+        'old_value'   => $old_duration,
+        'new_value'   => $duration_formatted,
+    ]);
 
     wp_send_json_success( [ 'duration' => $duration_formatted ] );
 }
@@ -1014,36 +1242,47 @@ function wp_mms_render_lot_meta_box( $post ) {
 }
 
 /**
- * Save the meta box data for the Lot CPT.
+ * Save the meta box data for the Lot CPT and log changes.
  *
  * @param int $post_id The ID of the post being saved.
  */
-function wp_mms_save_lot_meta_box_data( $post_id ) {
-    if ( ! isset( $_POST['wp_mms_lot_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_lot_meta_box_nonce'], 'wp_mms_save_lot_meta_box_data' ) ) {
-        return;
-    }
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-        return;
-    }
-    if ( ! current_user_can( 'edit_mms_lot', $post_id ) ) {
-        return;
+function wp_mms_save_lot_meta_box_data( $post_id, $post, $update ) {
+    if ( ! isset( $_POST['wp_mms_lot_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_lot_meta_box_nonce'], 'wp_mms_save_lot_meta_box_data' ) ) return;
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+    if ( ! current_user_can( 'edit_mms_lot', $post_id ) ) return;
+
+    if ( ! $update ) {
+        wp_mms_log_action( 'lot_created', [
+            'object_id'   => $post_id, 'object_type' => 'Lot/Batch', 'description' => 'created lot/batch',
+        ]);
     }
 
     $old_product_id = get_post_meta( $post_id, '_wp_mms_product_id', true );
 
     $fields = [
-        '_wp_mms_product_id' => 'intval',
-        '_wp_mms_quantity' => 'floatval',
-        '_wp_mms_expiry_date' => 'sanitize_text_field',
+        '_wp_mms_product_id'  => [ 'label' => 'Product', 'sanitize' => 'intval', 'is_title' => true ],
+        '_wp_mms_quantity'    => [ 'label' => 'Quantity', 'sanitize' => 'floatval' ],
+        '_wp_mms_expiry_date' => [ 'label' => 'Expiry Date', 'sanitize' => 'sanitize_text_field' ],
     ];
 
     $new_product_id = $old_product_id;
-    foreach ( $fields as $key => $sanitize_callback ) {
+    foreach ( $fields as $key => $details ) {
         if ( isset( $_POST[ $key ] ) ) {
-            $value = call_user_func( $sanitize_callback, $_POST[ $key ] );
-            update_post_meta( $post_id, $key, $value );
+            $old_value = get_post_meta( $post_id, $key, true );
+            $new_value = call_user_func( $details['sanitize'], $_POST[ $key ] );
+
+            if ( $update && $old_value != $new_value ) {
+                $old_display = !empty($details['is_title']) ? get_the_title($old_value) : $old_value;
+                $new_display = !empty($details['is_title']) ? get_the_title($new_value) : $new_value;
+                wp_mms_log_action( 'lot_updated', [
+                    'object_id'   => $post_id, 'object_type' => 'Lot/Batch', 'description' => "updated {$details['label']}",
+                    'old_value'   => $old_display, 'new_value'   => $new_display,
+                ]);
+            }
+
+            update_post_meta( $post_id, $key, $new_value );
             if ( $key === '_wp_mms_product_id' ) {
-                $new_product_id = $value;
+                $new_product_id = $new_value;
             }
         }
     }
@@ -1056,7 +1295,23 @@ function wp_mms_save_lot_meta_box_data( $post_id ) {
         wp_mms_update_product_stock_from_lots( $new_product_id );
     }
 }
-add_action( 'save_post_wp_mms_lot', 'wp_mms_save_lot_meta_box_data' );
+add_action( 'save_post_wp_mms_lot', 'wp_mms_save_lot_meta_box_data', 10, 3 );
+
+/**
+ * Log the deletion of a lot.
+ */
+function wp_mms_log_lot_deletion( $post_id ) {
+    $post = get_post( $post_id );
+    if ( $post->post_type === 'wp_mms_lot' ) {
+        wp_mms_log_action( 'lot_deleted', [
+            'object_id'   => $post_id,
+            'object_type' => 'Lot/Batch',
+            'description' => 'deleted lot/batch',
+            'old_value'   => $post->post_title,
+        ]);
+    }
+}
+add_action( 'before_delete_post', 'wp_mms_log_lot_deletion' );
 
 /**
  * Add meta boxes for the Requisition CPT.
@@ -1197,42 +1452,77 @@ function wp_mms_render_requisition_meta_box( $post ) {
 }
 
 /**
- * Save the meta box data for the Requisition CPT.
+ * Save the meta box data for the Requisition CPT and log changes.
  *
  * @param int $post_id The ID of the post being saved.
  */
-function wp_mms_save_requisition_meta_box_data( $post_id ) {
-    if ( ! isset( $_POST['wp_mms_requisition_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_requisition_meta_box_nonce'], 'wp_mms_save_requisition_meta_box_data' ) ) {
-        return;
-    }
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-        return;
-    }
-    if ( ! current_user_can( 'edit_mms_requisition', $post_id ) ) {
-        return;
+function wp_mms_save_requisition_meta_box_data( $post_id, $post, $update ) {
+    if ( ! isset( $_POST['wp_mms_requisition_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_requisition_meta_box_nonce'], 'wp_mms_save_requisition_meta_box_data' ) ) return;
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+    if ( ! current_user_can( 'edit_mms_requisition', $post_id ) ) return;
+
+    if ( ! $update ) {
+        wp_mms_log_action( 'requisition_created', [
+            'object_id'   => $post_id, 'object_type' => 'Requisition', 'description' => 'created requisition',
+        ]);
     }
 
     // Only allow users with publish caps to change the status
     if ( isset( $_POST['wp_mms_status'] ) && current_user_can('publish_mms_requisitions') ) {
-        update_post_meta( $post_id, '_wp_mms_status', sanitize_text_field( $_POST['wp_mms_status'] ) );
+        $old_status = get_post_meta( $post_id, '_wp_mms_status', true );
+        $new_status = sanitize_text_field( $_POST['wp_mms_status'] );
+        if ( $update && $old_status != $new_status ) {
+            wp_mms_log_action( 'requisition_updated', [
+                'object_id'   => $post_id, 'object_type' => 'Requisition', 'description' => 'updated Status',
+                'old_value'   => $old_status, 'new_value'   => $new_status,
+            ]);
+        }
+        update_post_meta( $post_id, '_wp_mms_status', $new_status );
     }
 
     if( isset( $_POST['wp_mms_desired_date'] ) ) {
-        update_post_meta( $post_id, '_wp_mms_desired_date', sanitize_text_field( $_POST['wp_mms_desired_date'] ) );
+        $old_date = get_post_meta( $post_id, '_wp_mms_desired_date', true );
+        $new_date = sanitize_text_field( $_POST['wp_mms_desired_date'] );
+        if ( $update && $old_date != $new_date ) {
+            wp_mms_log_action( 'requisition_updated', [
+                'object_id'   => $post_id, 'object_type' => 'Requisition', 'description' => 'updated Desired Date',
+                'old_value'   => $old_date, 'new_value'   => $new_date,
+            ]);
+        }
+        update_post_meta( $post_id, '_wp_mms_desired_date', $new_date );
     }
 
-    // Save requested items
+    $old_items = get_post_meta( $post_id, '_wp_mms_requested_items', true ) ?: [];
     $new_items = [];
     if ( isset( $_POST['wp_mms_requested_items'] ) && is_array( $_POST['wp_mms_requested_items'] ) ) {
         foreach ( $_POST['wp_mms_requested_items'] as $item ) {
-            if ( empty( $item['product_id'] ) || !isset( $item['quantity'] ) ) {
-                continue;
-            }
-            $new_items[] = [
-                'product_id' => intval( $item['product_id'] ),
-                'quantity'   => intval( $item['quantity'] ),
-            ];
+            if ( empty( $item['product_id'] ) || !isset( $item['quantity'] ) ) continue;
+            $new_items[] = [ 'product_id' => intval( $item['product_id'] ), 'quantity' => intval( $item['quantity'] ) ];
         }
+    }
+
+    if ( $update && serialize($old_items) !== serialize($new_items) ) {
+        wp_mms_log_action( 'requisition_updated', [
+            'object_id'   => $post_id, 'object_type' => 'Requisition', 'description' => 'updated requested items',
+            'old_value'   => $old_items, 'new_value'   => $new_items,
+        ]);
     }
     update_post_meta( $post_id, '_wp_mms_requested_items', $new_items );
 }
+add_action( 'save_post_wp_mms_requisition', 'wp_mms_save_requisition_meta_box_data', 10, 3 );
+
+/**
+ * Log the deletion of a requisition.
+ */
+function wp_mms_log_requisition_deletion( $post_id ) {
+    $post = get_post( $post_id );
+    if ( $post->post_type === 'wp_mms_requisition' ) {
+        wp_mms_log_action( 'requisition_deleted', [
+            'object_id'   => $post_id,
+            'object_type' => 'Requisition',
+            'description' => 'deleted requisition',
+            'old_value'   => $post->post_title,
+        ]);
+    }
+}
+add_action( 'before_delete_post', 'wp_mms_log_requisition_deletion' );

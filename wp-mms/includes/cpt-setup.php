@@ -350,5 +350,47 @@ function wp_mms_register_cpts() {
         ],
     );
     register_post_type( 'wp_mms_lot', $lot_args );
+
+    // Audit Log CPT (Private)
+    $audit_log_labels = array(
+        'name'                  => _x( 'Audit Logs', 'Post Type General Name', 'wp-mms' ),
+        'singular_name'         => _x( 'Audit Log', 'Post Type Singular Name', 'wp-mms' ),
+        'menu_name'             => __( 'Audit Trail', 'wp-mms' ),
+        'all_items'             => __( 'All Audit Logs', 'wp-mms' ),
+        'view_item'             => __( 'View Audit Log', 'wp-mms' ),
+        'search_items'          => __( 'Search Audit Logs', 'wp-mms' ),
+        'not_found'             => __( 'No audit logs found', 'wp-mms' ),
+        'not_found_in_trash'    => __( 'No audit logs found in Trash', 'wp-mms' ),
+    );
+    $audit_log_args = array(
+        'label'                 => __( 'Audit Log', 'wp-mms' ),
+        'description'           => __( 'Stores a log of all user actions within the MMS.', 'wp-mms' ),
+        'labels'                => $audit_log_labels,
+        'supports'              => array( 'title', 'editor' ), // Title for summary, editor for details
+        'hierarchical'          => false,
+        'public'                => false, // This makes it private
+        'show_ui'               => true,  // We want to see it in the admin
+        'show_in_menu'          => false, // We will create our own menu page for it
+        'show_in_admin_bar'     => false,
+        'show_in_nav_menus'     => false,
+        'can_export'            => true,
+        'has_archive'           => false,
+        'exclude_from_search'   => true,
+        'publicly_queryable'    => false, // Not accessible from the front-end
+        'rewrite'               => false,
+        'capability_type'       => 'mms_audit_log',
+        'capabilities' => [
+            // Only managers should be able to view or delete logs
+            'edit_post'          => 'manage_mms_options',
+            'read_post'          => 'manage_mms_options',
+            'delete_post'        => 'manage_mms_options',
+            'edit_posts'         => 'manage_mms_options',
+            'edit_others_posts'  => 'manage_mms_options',
+            'publish_posts'      => 'manage_mms_options',
+            'read_private_posts' => 'manage_mms_options',
+            'delete_posts'       => 'manage_mms_options',
+        ],
+    );
+    register_post_type( 'wp_mms_audit_log', $audit_log_args );
 }
 add_action( 'init', 'wp_mms_register_cpts', 0 );

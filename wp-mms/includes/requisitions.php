@@ -79,6 +79,14 @@ function wp_mms_handle_requisition_conversion() {
     update_post_meta( $requisition_id, '_wp_mms_status', 'completed' );
     update_post_meta( $requisition_id, '_wp_mms_converted_po_id', $new_po_id );
 
+    // Log the conversion action
+    wp_mms_log_action( 'requisition_converted', [
+        'object_id'   => $requisition_id,
+        'object_type' => 'Requisition',
+        'description' => 'converted to Purchase Order',
+        'new_value'   => $new_po_id, // Store the new PO ID for reference
+    ]);
+
     // Redirect to the new PO edit screen
     wp_redirect( admin_url( 'post.php?post=' . $new_po_id . '&action=edit' ) );
     exit;

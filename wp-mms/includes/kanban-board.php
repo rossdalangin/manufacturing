@@ -29,6 +29,18 @@ function wp_mms_update_order_status_ajax_handler() {
     $new_status = isset( $_POST['new_status'] ) ? sanitize_text_field( $_POST['new_status'] ) : '';
 
     if ( $order_id > 0 && ! empty( $new_status ) ) {
+        $old_status = get_post_meta( $order_id, '_wp_mms_status', true );
+
+        if ( $old_status != $new_status ) {
+            wp_mms_log_action( 'prod_order_updated', [
+                'object_id'   => $order_id,
+                'object_type' => 'Production Order',
+                'description' => 'updated Status via Kanban',
+                'old_value'   => $old_status,
+                'new_value'   => $new_status,
+            ]);
+        }
+
         // Use wp_update_post to ensure save_post hooks are triggered for inventory adjustments.
         $post_data = [
             'ID' => $order_id,

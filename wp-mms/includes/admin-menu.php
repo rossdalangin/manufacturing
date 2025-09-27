@@ -37,6 +37,15 @@ function wp_mms_add_admin_menu() {
 
     add_submenu_page(
         'wp_mms',
+        __( 'Audit Trail', 'wp-mms' ),
+        __( 'Audit Trail', 'wp-mms' ),
+        'manage_mms_options', // Only managers can view the audit trail
+        'wp_mms_audit_trail',
+        'wp_mms_audit_trail_page_html'
+    );
+
+    add_submenu_page(
+        'wp_mms',
         __( 'Suppliers', 'wp-mms' ),
         __( 'Suppliers', 'wp-mms' ),
         'edit_mms_suppliers', // Capability to view the list table
@@ -130,6 +139,25 @@ function wp_mms_dashboard_page_html() {
         <h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
         <p><?php _e( 'Welcome to the Manufacturing Management System dashboard. Here you will find an overview of your operations.', 'wp-mms' ); ?></p>
         <!-- Dashboard widgets will go here -->
+    </div>
+    <?php
+}
+
+/**
+ * Display the audit trail page HTML.
+ */
+function wp_mms_audit_trail_page_html() {
+    $audit_list_table = new MMS_Audit_Log_List_Table();
+    $audit_list_table->prepare_items();
+    ?>
+    <div class="wrap">
+        <h1 class="wp-heading-inline"><?php echo esc_html( get_admin_page_title() ); ?></h1>
+        <p><?php _e( 'A log of all significant actions taken within the Manufacturing Management System.', 'wp-mms' ); ?></p>
+        <form method="post">
+            <?php
+            $audit_list_table->display();
+            ?>
+        </form>
     </div>
     <?php
 }

@@ -71,6 +71,14 @@ function wp_mms_clone_bom() {
         }
     }
 
+    // Log the action
+    wp_mms_log_action( 'bom_version_created', [
+        'object_id'   => $new_post_id,
+        'object_type' => 'BOM Version',
+        'description' => 'created new version from',
+        'old_value'   => $source_post->ID, // Store the original BOM ID for reference
+    ]);
+
     // Redirect to the new draft for editing
     wp_redirect( admin_url( 'post.php?action=edit&post=' . $new_post_id ) );
     exit;
