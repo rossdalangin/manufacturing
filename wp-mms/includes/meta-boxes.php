@@ -822,6 +822,189 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
 }
 add_action( 'save_post', 'wp_mms_save_production_order_meta_box_data' );
 
+/**
+ * Add meta boxes for the Requisition CPT.
+ */
+function wp_mms_add_requisition_meta_boxes() {
+    add_meta_box(
+        'wp_mms_requisition_details',
+        __( 'Requisition Details', 'wp-mms' ),
+        'wp_mms_render_requisition_meta_box',
+        'wp_mms_requisition',
+        'normal',
+        'high'
+    );
+}
+add_action( 'add_meta_boxes', 'wp_mms_add_requisition_meta_boxes' );
+add_action( 'add_meta_boxes_wp_mms_requisition', 'wp_mms_add_requisition_actions_meta_box' );
+
+
+/**
+ * Add an 'Actions' meta box for requisitions.
+ */
+function wp_mms_add_requisition_actions_meta_box( $post ) {
+    if ( get_post_meta( $post->ID, '_wp_mms_status', true ) === 'approved' ) {
+        add_meta_box(
+            'wp_mms_requisition_actions',
+            __( 'Actions', 'wp-mms' ),
+            'wp_mms_render_requisition_actions_meta_box',
+            'wp_mms_requisition',
+            'side',
+            'high'
+        );
+    }
+}
+
+/**
+ * Render the HTML for the Requisition Actions meta box.
+ *
+ * @param WP_Post $post The post object.
+ */
+function wp_mms_render_requisition_actions_meta_box( $post ) {
+    $convert_url = wp_nonce_url(
+        admin_url( 'admin.php?page=wp_mms_reports&action=convert_to_po&requisition_id=' . $post->ID ),
+        'convert_req_to_po_' . $post->ID
+    );
+    ?>
+    <p>
+        <a href="<?php echo esc_url( $convert_url ); ?>" class="button button-primary button-large">
+            <?php _e( 'Create Purchase Order', 'wp-mms' ); ?>
+        </a>
+    </p>
+    <p class="description"><?php _e( 'This will create a new draft Purchase Order from this requisition and mark this requisition as completed.', 'wp-mms' ); ?></p>
+    <?php
+}
+
+
+/**
+ * Render the HTML for the Requisition meta box.
+ *
+ * @param WP_Post $post The post object.
+ */
+function wp_mms_render_requisition_meta_box( $post ) {
+    wp_nonce_field( 'wp_mms_save_requisition_meta_box_data', 'wp_mms_requisition_meta_box_nonce' );
+
+    // Get existing values
+    $status = get_post_meta( $post->ID, '_wp_mms_status', true ) ?: 'pending';
+    $desired_date = get_post_meta( $post->ID, '_wp_mms_desired_date', true );
+    $requested_items = get_post_meta( $post->ID, '_wp_mms_requested_items', true );
+    $products = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC'] );
+    ?>
+    <table class="form-table">
+        <tr valign="top">
+            <th scope="row"><label for="wp_mms_status"><?php _e( 'Status', 'wp-mms' ); ?></label></th>
+            <td>
+                <select id="wp_mms_status" name="wp_mms_status" <?php disabled( !current_user_can('publish_mms_requisitions') ); ?>>
+                    <option value="pending" <?php selected( $status, 'pending' ); ?>><?php _e( 'Pending', 'wp-mms' ); ?></option>
+                    <option value="approved" <?php selected( $status, 'approved' ); ?>><?php _e( 'Approved', 'wp-mms' ); ?></option>
+                    <option value="rejected" <?php selected( $status, 'rejected' ); ?>><?php _e( 'Rejected', 'wp-mms' ); ?></option>
+                    <option value="completed" <?php selected( $status, 'completed' ); ?>><?php _e( 'Completed', 'wp-mms' ); ?></option>
+                </select>
+                <?php if ( !current_user_can('publish_mms_requisitions') ) : ?>
+                <p class="description"><?php _e('Only a manager can change the status.', 'wp-mms'); ?></p>
+                <?php endif; ?>
+            </td>
+        </tr>
+        <tr valign="top">
+            <th scope="row"><label for="wp_mms_desired_date"><?php _e( 'Desired Delivery Date', 'wp-mms' ); ?></label></th>
+            <td><input type="date" id="wp_mms_desired_date" name="wp_mms_desired_date" value="<?php echo esc_attr( $desired_date ); ?>" /></td>
+        </tr>
+    </table>
+    <hr>
+    <h3><?php _e( 'Requested Items', 'wp-mms' ); ?></h3>
+    <table id="requisition-items" class="wp-list-table widefat fixed striped">
+        <thead>
+            <tr>
+                <th class="manage-column" style="width: 70%;"><?php _e( 'Product', 'wp-mms' ); ?></th>
+                <th class="manage-column" style="width: 15%;"><?php _e( 'Quantity', 'wp-mms' ); ?></th>
+                <th class="manage-column" style="width: 15%;"><?php _e( 'Actions', 'wp-mms' ); ?></th>
+            </tr>
+        </thead>
+        <tbody id="requisition-items-container">
+            <?php
+            if ( ! empty( $requested_items ) && is_array( $requested_items ) ) {
+                foreach ( $requested_items as $i => $item ) {
+                    ?>
+                    <tr class="requisition-item">
+                        <td>
+                            <select name="wp_mms_requested_items[<?php echo $i; ?>][product_id]" class="widefat">
+                                <option value=""><?php _e( 'Select a Product', 'wp-mms' ); ?></option>
+                                <?php foreach ( $products as $product ) : ?>
+                                    <option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $item['product_id'], $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
+                        <td><input type="number" name="wp_mms_requested_items[<?php echo $i; ?>][quantity]" value="<?php echo esc_attr( $item['quantity'] ); ?>" class="small-text" min="1" step="1" /></td>
+                        <td><a href="#" class="button remove-requisition-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
+                    </tr>
+                    <?php
+                }
+            }
+            ?>
+        </tbody>
+    </table>
+    <p>
+        <a href="#" id="add-requisition-item" class="button button-primary"><?php _e( 'Add Item', 'wp-mms' ); ?></a>
+    </p>
+    <script type="text/template" id="requisition-item-template">
+        <tr class="requisition-item">
+            <td>
+                <select name="wp_mms_requested_items[{index}][product_id]" class="widefat requisition-product-select">
+                     <option value=""><?php _e( 'Select a Product', 'wp-mms' ); ?></option>
+                </select>
+            </td>
+            <td><input type="number" name="wp_mms_requested_items[{index}][quantity]" value="1" class="small-text" min="1" step="1" /></td>
+            <td><a href="#" class="button remove-requisition-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
+        </tr>
+    </script>
+    <?php
+}
+
+/**
+ * Save the meta box data for the Requisition CPT.
+ *
+ * @param int $post_id The ID of the post being saved.
+ */
+function wp_mms_save_requisition_meta_box_data( $post_id ) {
+    if ( ! isset( $_POST['wp_mms_requisition_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_requisition_meta_box_nonce'], 'wp_mms_save_requisition_meta_box_data' ) ) {
+        return;
+    }
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+        return;
+    }
+    if ( ! current_user_can( 'edit_mms_requisition', $post_id ) ) {
+        return;
+    }
+    if ( get_post_type( $post_id ) !== 'wp_mms_requisition' ) {
+        return;
+    }
+
+    // Only allow users with publish caps to change the status
+    if ( isset( $_POST['wp_mms_status'] ) && current_user_can('publish_mms_requisitions') ) {
+        update_post_meta( $post_id, '_wp_mms_status', sanitize_text_field( $_POST['wp_mms_status'] ) );
+    }
+
+    if( isset( $_POST['wp_mms_desired_date'] ) ) {
+        update_post_meta( $post_id, '_wp_mms_desired_date', sanitize_text_field( $_POST['wp_mms_desired_date'] ) );
+    }
+
+    // Save requested items
+    $new_items = [];
+    if ( isset( $_POST['wp_mms_requested_items'] ) && is_array( $_POST['wp_mms_requested_items'] ) ) {
+        foreach ( $_POST['wp_mms_requested_items'] as $item ) {
+            if ( empty( $item['product_id'] ) || !isset( $item['quantity'] ) ) {
+                continue;
+            }
+            $new_items[] = [
+                'product_id' => intval( $item['product_id'] ),
+                'quantity'   => intval( $item['quantity'] ),
+            ];
+        }
+    }
+    update_post_meta( $post_id, '_wp_mms_requested_items', $new_items );
+}
+add_action( 'save_post', 'wp_mms_save_requisition_meta_box_data' );
+
 
 /**
  * Recursively calculate the total cost of a BOM and save it to the finished product.

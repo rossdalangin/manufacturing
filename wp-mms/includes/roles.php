@@ -38,7 +38,7 @@ function wp_mms_get_cpt_read_caps( $slug ) {
  */
 function wp_mms_get_all_capabilities() {
     $caps = [];
-    $cpts = ['mms_supplier', 'mms_product', 'mms_purchase_order', 'mms_bom', 'mms_production_order'];
+    $cpts = ['mms_supplier', 'mms_product', 'mms_purchase_order', 'mms_bom', 'mms_production_order', 'mms_requisition'];
     foreach ( $cpts as $cpt ) {
         $caps = array_merge( $caps, wp_mms_get_cpt_caps( $cpt ) );
     }
@@ -75,6 +75,7 @@ function wp_mms_add_roles_and_caps() {
     $purchasing_caps = array_merge(
         wp_mms_get_cpt_caps( 'mms_supplier' ),
         wp_mms_get_cpt_caps( 'mms_purchase_order' ),
+        wp_mms_get_cpt_caps( 'mms_requisition' ),
         wp_mms_get_cpt_read_caps( 'mms_product' ),
         ['view_mms_reports', 'read']
     );
@@ -84,6 +85,7 @@ function wp_mms_add_roles_and_caps() {
     $inventory_caps = array_merge(
         wp_mms_get_cpt_caps( 'mms_product' ),
         wp_mms_get_cpt_read_caps( 'mms_purchase_order' ),
+        wp_mms_get_cpt_caps( 'mms_requisition' ),
         ['view_mms_reports', 'read']
     );
     add_role( 'inventory_controller', __( 'Inventory Controller', 'wp-mms' ), wp_mms_format_caps_for_role( $inventory_caps ) );
@@ -93,6 +95,7 @@ function wp_mms_add_roles_and_caps() {
         wp_mms_get_cpt_caps( 'mms_production_order' ),
         wp_mms_get_cpt_read_caps( 'mms_bom' ),
         wp_mms_get_cpt_read_caps( 'mms_product' ),
+        wp_mms_get_cpt_caps( 'mms_requisition' ),
         ['view_mms_reports', 'read']
     );
     add_role( 'production_planner', __( 'Production Planner', 'wp-mms' ), wp_mms_format_caps_for_role( $planner_caps ) );
@@ -101,6 +104,7 @@ function wp_mms_add_roles_and_caps() {
     $bom_caps = array_merge(
         wp_mms_get_cpt_caps( 'mms_bom' ),
         wp_mms_get_cpt_caps( 'mms_product' ),
+        wp_mms_get_cpt_caps( 'mms_requisition' ),
         ['read']
     );
     add_role( 'bom_engineer', __( 'BOM Engineer', 'wp-mms' ), wp_mms_format_caps_for_role( $bom_caps ) );
@@ -108,6 +112,7 @@ function wp_mms_add_roles_and_caps() {
     // Add Operator Role
     $operator_caps = array_merge(
         wp_mms_get_cpt_read_caps( 'mms_production_order' ),
+        wp_mms_get_cpt_caps( 'mms_requisition' ),
         ['read']
     );
     add_role( 'mms_operator', __( 'MMS Operator', 'wp-mms' ), wp_mms_format_caps_for_role( $operator_caps ) );

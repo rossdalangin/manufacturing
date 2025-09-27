@@ -263,5 +263,55 @@ function wp_mms_register_cpts() {
         'menu_icon'             => 'dashicons-admin-settings',
     );
     register_post_type( 'wp_mms_production_order', $prod_order_args );
+
+    // Purchase Requisition CPT
+    $req_labels = array(
+        'name'                  => _x( 'Purchase Requisitions', 'Post Type General Name', 'wp-mms' ),
+        'singular_name'         => _x( 'Purchase Requisition', 'Post Type Singular Name', 'wp-mms' ),
+        'menu_name'             => __( 'Purchase Requisitions', 'wp-mms' ),
+        'name_admin_bar'        => __( 'Purchase Requisition', 'wp-mms' ),
+        'archives'              => __( 'Requisition Archives', 'wp-mms' ),
+        'attributes'            => __( 'Requisition Attributes', 'wp-mms' ),
+        'parent_item_colon'     => __( 'Parent Requisition:', 'wp-mms' ),
+        'all_items'             => __( 'All Requisitions', 'wp-mms' ),
+        'add_new_item'          => __( 'Add New Requisition', 'wp-mms' ),
+        'add_new'               => __( 'Add New', 'wp-mms' ),
+        'new_item'              => __( 'New Requisition', 'wp-mms' ),
+        'edit_item'             => __( 'Edit Requisition', 'wp-mms' ),
+        'update_item'           => __( 'Update Requisition', 'wp-mms' ),
+        'view_item'             => __( 'View Requisition', 'wp-mms' ),
+        'view_items'            => __( 'View Requisitions', 'wp-mms' ),
+        'search_items'          => __( 'Search Requisition', 'wp-mms' ),
+    );
+    $req_args = array(
+        'label'                 => __( 'Purchase Requisition', 'wp-mms' ),
+        'description'           => __( 'For requesting the purchase of materials', 'wp-mms' ),
+        'labels'                => $req_labels,
+        'supports'              => array( 'title', 'editor', 'author' ),
+        'hierarchical'          => false,
+        'public'                => true,
+        'show_ui'               => true,
+        'show_in_menu'          => false, // Will be added to our custom menu page
+        'menu_position'         => 5,
+        'show_in_admin_bar'     => true,
+        'show_in_nav_menus'     => true,
+        'can_export'            => true,
+        'has_archive'           => true,
+        'exclude_from_search'   => false,
+        'publicly_queryable'    => true,
+        'capability_type'       => 'mms_requisition',
+        'capabilities' => [
+            'edit_post'          => 'edit_mms_requisition',
+            'read_post'          => 'read_mms_requisition',
+            'delete_post'        => 'delete_mms_requisition',
+            'edit_posts'         => 'edit_mms_requisitions',
+            'edit_others_posts'  => 'edit_others_mms_requisitions',
+            'publish_posts'      => 'publish_mms_requisitions',
+            'read_private_posts' => 'read_private_mms_requisitions',
+            'delete_posts'       => 'delete_mms_requisitions',
+        ],
+        'menu_icon'             => 'dashicons-clipboard',
+    );
+    register_post_type( 'wp_mms_requisition', $req_args );
 }
 add_action( 'init', 'wp_mms_register_cpts', 0 );

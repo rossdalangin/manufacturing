@@ -18,7 +18,7 @@ if ( ! defined( 'WPINC' ) ) {
 function wp_mms_admin_enqueue_assets( $hook ) {
     global $post;
 
-    $allowed_post_types = [ 'wp_mms_purchase_order', 'wp_mms_bom' ];
+    $allowed_post_types = [ 'wp_mms_purchase_order', 'wp_mms_bom', 'wp_mms_requisition' ];
     if ( ( 'post.php' === $hook || 'post-new.php' === $hook ) && isset( $post->post_type ) && in_array( $post->post_type, $allowed_post_types ) ) {
 
         $deps = ['jquery'];
@@ -36,30 +36,27 @@ function wp_mms_admin_enqueue_assets( $hook ) {
 
         // Prepare data for the script
         $localized_data = [];
-        if ( 'wp_mms_bom' === $post->post_type ) {
-            // Allow any product to be a component for multi-level BOMs.
-            $component_products_query = get_posts( [
-                'post_type' => 'wp_mms_product',
-                'numberposts' => -1,
-                'orderby' => 'title',
-                'order' => 'ASC',
-            ] );
 
+        // Data for BOM editor
+        if ( 'wp_mms_bom' === $post->post_type ) {
+            $component_products_query = get_posts( [ 'post_type' => 'wp_mms_product', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC' ] );
             $components = [];
-            $item_type_labels = [
-                'raw_material' => __( 'Raw Material', 'wp-mms' ),
-                'component' => __( 'Component', 'wp-mms' ),
-                'finished_good' => __( 'Sub-Assembly', 'wp-mms' ),
-            ];
+            $item_type_labels = [ 'raw_material' => __( 'Raw Material', 'wp-mms' ), 'component' => __( 'Component', 'wp-mms' ), 'finished_good' => __( 'Sub-Assembly', 'wp-mms' ) ];
             foreach ($component_products_query as $product) {
                 $item_type = get_post_meta( $product->ID, '_wp_mms_item_type', true );
-                $components[] = [
-                    'id' => $product->ID,
-                    'title' => $product->post_title,
-                    'type' => $item_type_labels[$item_type] ?? $item_type,
-                ];
+                $components[] = [ 'id' => $product->ID, 'title' => $product->post_title, 'type' => $item_type_labels[$item_type] ?? $item_type ];
             }
             $localized_data['components'] = $components;
+        }
+
+        // Data for Requisition editor
+        if ( 'wp_mms_requisition' === $post->post_type ) {
+            $all_products_query = get_posts( [ 'post_type' => 'wp_mms_product', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC' ] );
+            $products = [];
+            foreach ( $all_products_query as $product ) {
+                $products[] = [ 'id' => $product->ID, 'title' => $product->post_title ];
+            }
+            $localized_data['products'] = $products;
         }
 
         // Pass the data to the script

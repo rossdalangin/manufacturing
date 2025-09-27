@@ -60,6 +60,14 @@ function wp_mms_add_admin_menu() {
     );
 
     add_submenu_page(
+        'edit.php?post_type=wp_mms_purchase_order', // Child of Purchase Orders
+        __( 'Purchase Requisitions', 'wp-mms' ),
+        __( 'Purchase Requisitions', 'wp-mms' ),
+        'edit_mms_requisitions',
+        'edit.php?post_type=wp_mms_requisition'
+    );
+
+    add_submenu_page(
         'wp_mms',
         __( 'Bills of Materials', 'wp-mms' ),
         __( 'Bills of Materials', 'wp-mms' ),

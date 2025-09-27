@@ -22,6 +22,46 @@ jQuery(document).ready(function($) {
                     var newName = name.replace(/\[\d+\]/, '[' + index + ']');
                     $(this).attr('name', newName);
                 }
+        });
+    });
+
+    // --- Requisition Repeater ---
+
+    // Handle adding a new requisition item
+    $('#add-requisition-item').on('click', function(e) {
+        e.preventDefault();
+        var template = $('#requisition-item-template').html();
+        var newIndex = $('#requisition-items-container .requisition-item').length;
+        template = template.replace(/{index}/g, newIndex);
+
+        var newRow = $(template);
+        $('#requisition-items-container').append(newRow);
+
+        // Populate the select dropdown in the new row
+        if (typeof wp_mms_data !== 'undefined' && typeof wp_mms_data.products !== 'undefined') {
+            var select = newRow.find('.requisition-product-select');
+            $.each(wp_mms_data.products, function(index, product) {
+                select.append($('<option>', {
+                    value: product.id,
+                    text: product.title
+                }));
+            });
+        }
+    });
+
+    // Handle removing a requisition item
+    $('#requisition-items-container').on('click', '.remove-requisition-item', function(e) {
+        e.preventDefault();
+        $(this).closest('.requisition-item').remove();
+        // Re-index remaining rows
+        $('#requisition-items-container .requisition-item').each(function(index) {
+            $(this).find('select, input').each(function() {
+                var name = $(this).attr('name');
+                if (name) {
+                    var newName = name.replace(/\[\d+\]/, '[' + index + ']');
+                    $(this).attr('name', newName);
+                }
+            });
             });
         });
     });
