@@ -267,6 +267,52 @@ function wp_mms_reports_page_html() {
                                 <?php endif; ?>
                             </div>
                         </div>
+
+                        <div class="postbox">
+                            <div class="hndle">
+                                <h2 style="display:inline-block;"><?php _e( 'Production Scrap Report', 'wp-mms' ); ?></h2>
+                            </div>
+                            <div class="inside">
+                                <?php
+                                $scrap_query = new WP_Query([
+                                    'post_type' => 'wp_mms_production_order',
+                                    'posts_per_page' => -1,
+                                    'meta_query' => [
+                                        ['key' => '_wp_mms_total_scrap_cost', 'compare' => 'EXISTS'],
+                                        ['key' => '_wp_mms_total_scrap_cost', 'value' => 0, 'compare' => '!='],
+                                    ]
+                                ]);
+                                if ( $scrap_query->have_posts() ) :
+                                ?>
+                                <table class="wp-list-table widefat fixed striped">
+                                    <thead>
+                                        <tr>
+                                            <th><?php _e( 'Production Order', 'wp-mms' ); ?></th>
+                                            <th><?php _e( 'Product Made', 'wp-mms' ); ?></th>
+                                            <th><?php _e( 'Quantity Made', 'wp-mms' ); ?></th>
+                                            <th><?php _e( 'Total Scrap Cost', 'wp-mms' ); ?></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php while ( $scrap_query->have_posts() ) : $scrap_query->the_post();
+                                            $product_id = get_post_meta( get_the_ID(), '_wp_mms_product_id', true );
+                                            $quantity = get_post_meta( get_the_ID(), '_wp_mms_quantity', true );
+                                            $scrap_cost = get_post_meta( get_the_ID(), '_wp_mms_total_scrap_cost', true );
+                                        ?>
+                                        <tr>
+                                            <td><a href="<?php echo esc_url( get_edit_post_link( get_the_ID() ) ); ?>"><?php the_title(); ?></a></td>
+                                            <td><?php echo esc_html( get_the_title( $product_id ) ); ?></td>
+                                            <td><?php echo esc_html( $quantity ); ?></td>
+                                            <td><?php echo esc_html( number_format_i18n( $scrap_cost, 2 ) ); ?></td>
+                                        </tr>
+                                        <?php endwhile; ?>
+                                    </tbody>
+                                </table>
+                                <?php else : ?>
+                                    <p><?php _e( 'No production orders with scrap have been recorded.', 'wp-mms' ); ?></p>
+                                <?php endif; wp_reset_postdata(); ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

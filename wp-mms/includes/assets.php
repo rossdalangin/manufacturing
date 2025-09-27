@@ -59,6 +59,19 @@ function wp_mms_admin_enqueue_assets( $hook ) {
             $localized_data['products'] = $products;
         }
 
+        // Data for Production Order screen (for scrap)
+        if ( 'wp_mms_production_order' === $post->post_type ) {
+            $product_id = get_post_meta( $post->ID, '_wp_mms_product_id', true );
+            if( $product_id ) {
+                $raw_materials = wp_mms_get_exploded_bom_materials( $product_id );
+                $scrap_components = [];
+                foreach( $raw_materials as $material_id => $qty ) {
+                    $scrap_components[] = [ 'id' => $material_id, 'title' => get_the_title($material_id) ];
+                }
+                $localized_data['scrap_components'] = $scrap_components;
+            }
+        }
+
         // Pass the data to the script
         wp_localize_script( 'wp-mms-admin-script', 'wp_mms_data', $localized_data );
     }

@@ -61,6 +61,46 @@ jQuery(document).ready(function($) {
                     var newName = name.replace(/\[\d+\]/, '[' + index + ']');
                     $(this).attr('name', newName);
                 }
+        });
+    });
+
+    // --- Scrap Repeater ---
+
+    // Handle adding a new scrap item
+    $('#add-scrap-item').on('click', function(e) {
+        e.preventDefault();
+        var template = $('#scrap-item-template').html();
+        var newIndex = $('#scrap-items-container .scrap-item').length;
+        template = template.replace(/{index}/g, newIndex);
+
+        var newRow = $(template);
+        $('#scrap-items-container').append(newRow);
+
+        // Populate the select dropdown in the new row
+        if (typeof wp_mms_data !== 'undefined' && typeof wp_mms_data.scrap_components !== 'undefined') {
+            var select = newRow.find('.scrap-product-select');
+            $.each(wp_mms_data.scrap_components, function(index, component) {
+                select.append($('<option>', {
+                    value: component.id,
+                    text: component.title
+                }));
+            });
+        }
+    });
+
+    // Handle removing a scrap item
+    $('#scrap-items-container').on('click', '.remove-scrap-item', function(e) {
+        e.preventDefault();
+        $(this).closest('.scrap-item').remove();
+        // Re-index remaining rows
+        $('#scrap-items-container .scrap-item').each(function(index) {
+            $(this).find('select, input').each(function() {
+                var name = $(this).attr('name');
+                if (name) {
+                    var newName = name.replace(/\[\d+\]/, '[' + index + ']');
+                    $(this).attr('name', newName);
+                }
+            });
             });
             });
         });

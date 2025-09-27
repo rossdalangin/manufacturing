@@ -631,6 +631,83 @@ function wp_mms_add_production_order_meta_boxes() {
 }
 add_action( 'add_meta_boxes', 'wp_mms_add_production_order_meta_boxes' );
 add_action( 'add_meta_boxes_wp_mms_production_order', 'wp_mms_add_consumed_lots_meta_box' );
+add_action( 'add_meta_boxes_wp_mms_production_order', 'wp_mms_add_scrap_record_meta_box' );
+
+/**
+ * Add a meta box for recording scrap.
+ */
+function wp_mms_add_scrap_record_meta_box( $post ) {
+    if ( get_post_meta( $post->ID, '_wp_mms_status', true ) === 'completed' ) {
+        add_meta_box(
+            'wp_mms_scrap_record',
+            __( 'Record Scrap / Wastage', 'wp-mms' ),
+            'wp_mms_render_scrap_record_meta_box',
+            'wp_mms_production_order',
+            'normal',
+            'low'
+        );
+    }
+}
+
+/**
+ * Render the HTML for the scrap record meta box.
+ */
+function wp_mms_render_scrap_record_meta_box( $post ) {
+    $scrapped_items = get_post_meta( $post->ID, '_wp_mms_scrapped_items', true );
+
+    // Get the components from this order's BOM to populate the dropdown
+    $product_id = get_post_meta( $post->ID, '_wp_mms_product_id', true );
+    $raw_materials = wp_mms_get_exploded_bom_materials( $product_id );
+    ?>
+    <p class="description"><?php _e( 'Record any component materials that were scrapped during this production run. This will deduct the items from inventory.', 'wp-mms' ); ?></p>
+    <table id="scrap-items" class="wp-list-table widefat fixed striped">
+        <thead>
+            <tr>
+                <th style="width: 70%;"><?php _e( 'Component', 'wp-mms' ); ?></th>
+                <th style="width: 15%;"><?php _e( 'Quantity Scrapped', 'wp-mms' ); ?></th>
+                <th style="width: 15%;"><?php _e( 'Actions', 'wp-mms' ); ?></th>
+            </tr>
+        </thead>
+        <tbody id="scrap-items-container">
+            <?php
+            if ( ! empty( $scrapped_items ) && is_array( $scrapped_items ) ) {
+                foreach ( $scrapped_items as $i => $item ) {
+                    ?>
+                    <tr class="scrap-item">
+                        <td>
+                            <select name="_wp_mms_scrapped_items[<?php echo $i; ?>][product_id]" class="widefat">
+                                <option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option>
+                                <?php foreach ( $raw_materials as $material_id => $qty ) : ?>
+                                    <option value="<?php echo esc_attr( $material_id ); ?>" <?php selected( $item['product_id'], $material_id ); ?>><?php echo esc_html( get_the_title( $material_id ) ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
+                        <td><input type="number" name="_wp_mms_scrapped_items[<?php echo $i; ?>][quantity]" value="<?php echo esc_attr( $item['quantity'] ); ?>" class="small-text" min="0" step="any" /></td>
+                        <td><a href="#" class="button remove-scrap-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
+                    </tr>
+                    <?php
+                }
+            }
+            ?>
+        </tbody>
+    </table>
+    <p>
+        <a href="#" id="add-scrap-item" class="button button-primary"><?php _e( 'Add Scrap Item', 'wp-mms' ); ?></a>
+    </p>
+    <script type="text/template" id="scrap-item-template">
+        <tr class="scrap-item">
+            <td>
+                <select name="_wp_mms_scrapped_items[{index}][product_id]" class="widefat scrap-product-select">
+                     <option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option>
+                </select>
+            </td>
+            <td><input type="number" name="_wp_mms_scrapped_items[{index}][quantity]" value="1" class="small-text" min="0" step="any" /></td>
+            <td><a href="#" class="button remove-scrap-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
+        </tr>
+    </script>
+    <?php
+}
+
 
 /**
  * Add a meta box to show the consumed lots for a completed production order.
@@ -939,6 +1016,88 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
         if ( $old_details['product_id'] != $new_details['product_id'] || $old_details['quantity'] != $new_details['quantity'] ) {
             $adjust_inventory_for_production( $post_id, $old_details, 'revert' );
             $adjust_inventory_for_production( $post_id, $new_details, 'complete' );
+        }
+    }
+
+    // --- Scrap Recording and Adjustment Logic ---
+    $old_scrapped_items = get_post_meta( $post_id, '_wp_mms_scrapped_items', true ) ?: [];
+    $new_scrapped_items = [];
+    if ( isset( $_POST['_wp_mms_scrapped_items'] ) && is_array( $_POST['_wp_mms_scrapped_items'] ) ) {
+        foreach ( $_POST['_wp_mms_scrapped_items'] as $item ) {
+            if ( empty( $item['product_id'] ) || !isset( $item['quantity'] ) || floatval($item['quantity']) <= 0 ) {
+                continue;
+            }
+            $new_scrapped_items[] = [ 'product_id' => intval( $item['product_id'] ), 'quantity'   => floatval( $item['quantity'] ) ];
+        }
+    }
+
+    // Only proceed if scrap data has actually changed.
+    if ( $old_scrapped_items != $new_scrapped_items ) {
+        $affected_scrap_products = [];
+
+        // 1. Revert previously recorded scrap to avoid duplicating deductions.
+        $old_consumed_scrap = get_post_meta( $post_id, '_wp_mms_consumed_scrap_lots', true );
+        if ( !empty($old_consumed_scrap) && is_array($old_consumed_scrap) ) {
+            foreach ( $old_consumed_scrap as $lot_id => $data ) {
+                $affected_scrap_products[] = $data['product_id'];
+                $existing_lot = get_post($lot_id);
+                if ($existing_lot) {
+                    $lot_qty = floatval( get_post_meta( $lot_id, '_wp_mms_quantity', true ) );
+                    update_post_meta( $lot_id, '_wp_mms_quantity', $lot_qty + $data['qty'] );
+                } else {
+                    $recreated_lot_id = wp_insert_post([ 'post_title' => $data['title'], 'post_type' => 'wp_mms_lot', 'post_status' => 'publish' ]);
+                    if (!is_wp_error($recreated_lot_id)) {
+                         update_post_meta( $recreated_lot_id, '_wp_mms_product_id', $data['product_id'] );
+                         update_post_meta( $recreated_lot_id, '_wp_mms_quantity', $data['qty'] );
+                    }
+                }
+            }
+        }
+
+        // 2. Consume new scrap items via FIFO and calculate cost.
+        $new_consumed_scrap = [];
+        $total_scrap_cost = 0;
+        if ( !empty($new_scrapped_items) ) {
+            foreach ( $new_scrapped_items as $scrap_item ) {
+                $material_id = $scrap_item['product_id'];
+                $qty_to_consume = $scrap_item['quantity'];
+                $affected_scrap_products[] = $material_id;
+
+                $unit_cost = floatval(get_post_meta( $material_id, '_wp_mms_unit_cost', true ));
+                $total_scrap_cost += ($qty_to_consume * $unit_cost);
+
+                $lots_query = new WP_Query([ 'post_type' => 'wp_mms_lot', 'posts_per_page' => -1, 'orderby' => 'date', 'order' => 'ASC', 'meta_query' => [ ['key' => '_wp_mms_product_id', 'value' => $material_id] ] ]);
+
+                if ( $lots_query->have_posts() ) {
+                    while ( $lots_query->have_posts() && $qty_to_consume > 0 ) {
+                        $lots_query->the_post();
+                        $lot_id = get_the_ID();
+                        $lot_qty = floatval( get_post_meta( $lot_id, '_wp_mms_quantity', true ) );
+                        $qty_taken = min( $lot_qty, $qty_to_consume );
+
+                        $new_consumed_scrap[$lot_id] = [ 'qty' => $qty_taken, 'product_id' => $material_id, 'title' => get_the_title() ];
+                        $new_lot_qty = $lot_qty - $qty_taken;
+                        $qty_to_consume -= $qty_taken;
+
+                        if ( $new_lot_qty <= 0 ) {
+                            wp_delete_post( $lot_id, true );
+                        } else {
+                            update_post_meta( $lot_id, '_wp_mms_quantity', $new_lot_qty );
+                        }
+                    }
+                }
+                wp_reset_postdata();
+            }
+        }
+
+        // 3. Update post meta for the scrap records.
+        update_post_meta( $post_id, '_wp_mms_scrapped_items', $new_scrapped_items );
+        update_post_meta( $post_id, '_wp_mms_consumed_scrap_lots', $new_consumed_scrap );
+        update_post_meta( $post_id, '_wp_mms_total_scrap_cost', $total_scrap_cost );
+
+        // 4. Update stock for all affected products.
+        foreach ( array_unique($affected_scrap_products) as $p_id ) {
+            wp_mms_update_product_stock_from_lots( $p_id );
         }
     }
 }
