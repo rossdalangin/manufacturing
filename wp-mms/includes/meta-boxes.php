@@ -476,13 +476,9 @@ function wp_mms_render_bom_meta_box( $post ) {
     $finished_product_id = get_post_meta( $post->ID, '_wp_mms_finished_product_id', true );
     $components = get_post_meta( $post->ID, '_wp_mms_components', true );
 
-    // Get finished goods (products) and components (raw materials/sub-assemblies)
-    $finished_goods = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'meta_key' => '_wp_mms_item_type', 'meta_value' => 'finished_good'] );
-    $component_products = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'meta_query' => [
-        'relation' => 'OR',
-        ['meta_key' => '_wp_mms_item_type', 'meta_value' => 'raw_material'],
-        ['meta_key' => '_wp_mms_item_type', 'meta_value' => 'component']
-    ]] );
+    // Get finished goods (products) and all possible components
+    $finished_goods = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC', 'meta_key' => '_wp_mms_item_type', 'meta_value' => 'finished_good'] );
+    $component_products = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC'] );
 
     ?>
     <table class="form-table">
@@ -520,8 +516,17 @@ function wp_mms_render_bom_meta_box( $post ) {
                         <td>
                             <select name="wp_mms_components[<?php echo $i; ?>][product_id]" class="widefat">
                                 <option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option>
-                                <?php foreach ( $component_products as $product ) : ?>
-                                    <option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $item['product_id'], $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option>
+                                <?php
+                                $item_type_labels = [
+                                    'raw_material' => __( 'Raw Material', 'wp-mms' ),
+                                    'component' => __( 'Component', 'wp-mms' ),
+                                    'finished_good' => __( 'Sub-Assembly', 'wp-mms' ),
+                                ];
+                                foreach ( $component_products as $product ) :
+                                    $item_type = get_post_meta( $product->ID, '_wp_mms_item_type', true );
+                                    $display_text = $product->post_title . ' (' . ( $item_type_labels[$item_type] ?? $item_type ) . ')';
+                                ?>
+                                    <option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $item['product_id'], $product->ID ); ?>><?php echo esc_html( $display_text ); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </td>
@@ -669,6 +674,64 @@ function wp_mms_render_production_order_meta_box( $post ) {
 }
 
 /**
+ * Recursively explodes a BOM and adjusts stock for base components.
+ *
+ * @param int    $product_id      The ID of the product whose BOM is being exploded.
+ * @param float  $quantity_needed The quantity of this product needed for the parent production.
+ * @param string $direction       'deduct' or 'add'.
+ * @param array  $visited_boms    To prevent infinite loops.
+ */
+function wp_mms_explode_bom_for_stock_adjustment( $product_id, $quantity_needed, $direction, &$visited_boms ) {
+    // Infinite loop protection
+    if ( in_array( $product_id, $visited_boms ) ) {
+        return;
+    }
+    $visited_boms[] = $product_id;
+
+    // Find the BOM for the current product
+    $bom_query = new WP_Query([
+        'post_type' => 'wp_mms_bom',
+        'posts_per_page' => 1,
+        'meta_key' => '_wp_mms_finished_product_id',
+        'meta_value' => $product_id,
+        'fields' => 'ids',
+    ]);
+
+    if ( !$bom_query->have_posts() ) {
+        return; // No BOM for this sub-assembly, nothing more to explode.
+    }
+
+    $bom_id = $bom_query->posts[0];
+    $components = get_post_meta( $bom_id, '_wp_mms_components', true );
+
+    if ( empty( $components ) || ! is_array( $components ) ) {
+        return;
+    }
+
+    foreach ( $components as $item ) {
+        $component_id = $item['product_id'];
+        if ( empty( $component_id ) ) continue;
+
+        $component_qty_per_parent = floatval( $item['quantity'] );
+        $total_component_qty_needed = $component_qty_per_parent * $quantity_needed;
+        $component_item_type = get_post_meta( $component_id, '_wp_mms_item_type', true );
+
+        if ( 'finished_good' === $component_item_type ) {
+            // It's a sub-assembly, recurse further down.
+            wp_mms_explode_bom_for_stock_adjustment( $component_id, $total_component_qty_needed, $direction, $visited_boms );
+        } else {
+            // It's a raw material or simple component, adjust its stock.
+            $current_stock = floatval( get_post_meta( $component_id, '_wp_mms_stock_quantity', true ) );
+            $new_stock = ( $direction === 'deduct' )
+                ? $current_stock - $total_component_qty_needed
+                : $current_stock + $total_component_qty_needed;
+            update_post_meta( $component_id, '_wp_mms_stock_quantity', $new_stock );
+        }
+    }
+}
+
+
+/**
  * Save the meta box data for the Production Order CPT and handle inventory adjustments.
  *
  * @param int $post_id The ID of the post being saved.
@@ -724,40 +787,15 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
             return;
         }
 
-        // Find the BOM for this product
-        $bom_query = new WP_Query([
-            'post_type' => 'wp_mms_bom',
-            'posts_per_page' => 1,
-            'meta_key' => '_wp_mms_finished_product_id',
-            'meta_value' => $product_id
-        ]);
+        // 1. Adjust stock for all base components by exploding the BOM.
+        $visited = [];
+        $component_direction = ( $direction === 'complete' ) ? 'deduct' : 'add';
+        wp_mms_explode_bom_for_stock_adjustment( $product_id, $quantity_produced, $component_direction, $visited );
 
-        if ( !$bom_query->have_posts() ) {
-            return; // No BOM found for this product, can't adjust inventory.
-        }
-        $bom_id = $bom_query->posts[0]->ID;
-        $components = get_post_meta( $bom_id, '_wp_mms_components', true );
-
-        // Adjust stock for components
-        if ( ! empty( $components ) && is_array( $components ) ) {
-            foreach ( $components as $item ) {
-                $component_id = $item['product_id'];
-                $component_qty = floatval( $item['quantity'] );
-                $total_to_adjust = $component_qty * $quantity_produced;
-
-                $current_stock = floatval( get_post_meta( $component_id, '_wp_mms_stock_quantity', true ) );
-                // If completing, we subtract components. If reverting, we add them back.
-                $new_stock = ( $direction === 'complete' )
-                    ? $current_stock - $total_to_adjust
-                    : $current_stock + $total_to_adjust;
-                update_post_meta( $component_id, '_wp_mms_stock_quantity', $new_stock );
-            }
-        }
-
-        // Adjust stock for the finished good
+        // 2. Adjust stock for the final finished good.
         $current_fg_stock = floatval( get_post_meta( $product_id, '_wp_mms_stock_quantity', true ) );
-        // If completing, we add finished goods. If reverting, we subtract them.
-        $new_fg_stock = ( $direction === 'complete' )
+        $fg_direction = ( $direction === 'complete' ) ? 'add' : 'deduct';
+        $new_fg_stock = ( $fg_direction === 'add' )
             ? $current_fg_stock + $quantity_produced
             : $current_fg_stock - $quantity_produced;
         update_post_meta( $product_id, '_wp_mms_stock_quantity', $new_fg_stock );
@@ -784,16 +822,20 @@ add_action( 'save_post', 'wp_mms_save_production_order_meta_box_data' );
 
 
 /**
- * Calculate the total cost of a BOM and save it to the finished product.
+ * Recursively calculate the total cost of a BOM and save it to the finished product.
  *
- * @param int $bom_post_id The ID of the BOM post.
+ * @param int   $bom_post_id  The ID of the BOM post to calculate.
+ * @param array $visited_boms An array of BOM IDs already visited in this recursion, to prevent infinite loops.
+ * @return float The calculated cost.
  */
-function wp_mms_calculate_bom_cost( $bom_post_id ) {
-    $finished_product_id = get_post_meta( $bom_post_id, '_wp_mms_finished_product_id', true );
-    if ( empty( $finished_product_id ) ) {
-        return;
+function wp_mms_calculate_bom_cost( $bom_post_id, $visited_boms = [] ) {
+    // Protection against infinite loops
+    if ( in_array( $bom_post_id, $visited_boms ) ) {
+        return 0; // Circular dependency detected, return 0 cost.
     }
+    $visited_boms[] = $bom_post_id;
 
+    $finished_product_id = get_post_meta( $bom_post_id, '_wp_mms_finished_product_id', true );
     $components = get_post_meta( $bom_post_id, '_wp_mms_components', true );
     $total_cost = 0;
 
@@ -801,13 +843,44 @@ function wp_mms_calculate_bom_cost( $bom_post_id ) {
         foreach ( $components as $item ) {
             $component_id = $item['product_id'];
             $quantity = floatval( $item['quantity'] );
-            $component_cost = floatval( get_post_meta( $component_id, '_wp_mms_unit_cost', true ) );
+            $component_cost = 0;
+
+            if ( empty( $component_id ) ) {
+                continue;
+            }
+
+            $component_item_type = get_post_meta( $component_id, '_wp_mms_item_type', true );
+
+            if ( 'finished_good' === $component_item_type ) {
+                // It's a sub-assembly. Find its BOM and recursively calculate its cost.
+                $sub_bom_query = new WP_Query([
+                    'post_type' => 'wp_mms_bom',
+                    'posts_per_page' => 1,
+                    'meta_key' => '_wp_mms_finished_product_id',
+                    'meta_value' => $component_id,
+                    'fields' => 'ids',
+                ]);
+
+                if ( ! empty( $sub_bom_query->posts ) ) {
+                    $sub_bom_id = $sub_bom_query->posts[0];
+                    $component_cost = wp_mms_calculate_bom_cost( $sub_bom_id, $visited_boms );
+                }
+            } else {
+                // It's a raw material or simple component. Use its direct unit cost.
+                $component_cost = floatval( get_post_meta( $component_id, '_wp_mms_unit_cost', true ) );
+            }
+
             $total_cost += ( $component_cost * $quantity );
         }
     }
 
-    // Save the calculated cost on the finished product's post meta
-    update_post_meta( $finished_product_id, '_wp_mms_bom_cost', $total_cost );
+    // Save the calculated cost on the finished product's post meta.
+    if ( ! empty( $finished_product_id ) ) {
+        update_post_meta( $finished_product_id, '_wp_mms_bom_cost', $total_cost );
+    }
+
+    // Return the calculated cost for use in parent recursive calls.
+    return $total_cost;
 }
 
 /**
@@ -827,6 +900,8 @@ function wp_mms_add_product_cost_meta_box() {
     }
 }
 add_action( 'add_meta_boxes_wp_mms_product', 'wp_mms_add_product_cost_meta_box' );
+add_action( 'add_meta_boxes_wp_mms_product', 'wp_mms_add_exploded_bom_meta_box' );
+
 
 /**
  * Render the HTML for the product cost display meta box.
@@ -838,4 +913,112 @@ function wp_mms_render_product_cost_meta_box( $post ) {
     $cost_display = is_numeric( $bom_cost ) ? number_format_i18n( $bom_cost, 2 ) : 'N/A';
     echo '<strong>' . esc_html( $cost_display ) . '</strong>';
     echo '<p class="description">' . __( 'This cost is automatically calculated from the product\'s Bill of Materials.', 'wp-mms' ) . '</p>';
+}
+
+/**
+ * Add a meta box to show the fully exploded BOM for a finished good.
+ */
+function wp_mms_add_exploded_bom_meta_box() {
+    global $post;
+    if ( isset($post->ID) && get_post_meta( $post->ID, '_wp_mms_item_type', true ) === 'finished_good' ) {
+        add_meta_box(
+            'wp_mms_exploded_bom',
+            __( 'Exploded Bill of Materials (Raw Materials)', 'wp-mms' ),
+            'wp_mms_render_exploded_bom_meta_box',
+            'wp_mms_product',
+            'normal',
+            'low'
+        );
+    }
+}
+
+/**
+ * Render the HTML for the exploded BOM meta box.
+ *
+ * @param WP_Post $post The post object.
+ */
+function wp_mms_render_exploded_bom_meta_box( $post ) {
+    $raw_materials = wp_mms_get_exploded_bom_materials( $post->ID );
+
+    if ( empty( $raw_materials ) ) {
+        echo '<p>' . __( 'No Bill of Materials found or no raw materials required.', 'wp-mms' ) . '</p>';
+        return;
+    }
+    ?>
+    <p class="description"><?php _e( 'This table shows the total quantity of each raw material required to produce one unit of this finished good.', 'wp-mms' ); ?></p>
+    <table class="wp-list-table widefat fixed striped">
+        <thead>
+            <tr>
+                <th><?php _e( 'Raw Material', 'wp-mms' ); ?></th>
+                <th><?php _e( 'Total Quantity Required', 'wp-mms' ); ?></th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ( $raw_materials as $material_id => $quantity ) : ?>
+                <tr>
+                    <td><?php echo esc_html( get_the_title( $material_id ) ); ?></td>
+                    <td><?php echo esc_html( $quantity ); ?></td>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php
+}
+
+/**
+ * Recursively get a flat list of all raw materials and their quantities for a given product.
+ *
+ * @param int   $product_id The ID of the finished good.
+ * @param float $qty_needed The quantity of this product needed for its parent.
+ * @param array &$raw_materials A reference to the array holding the final list.
+ * @param array &$visited_boms  To prevent infinite loops.
+ */
+function wp_mms_get_exploded_bom_recursive( $product_id, $qty_needed, &$raw_materials, &$visited_boms ) {
+    if ( in_array( $product_id, $visited_boms ) ) {
+        return;
+    }
+    $visited_boms[] = $product_id;
+
+    $bom_query = new WP_Query(['post_type' => 'wp_mms_bom', 'posts_per_page' => 1, 'meta_key' => '_wp_mms_finished_product_id', 'meta_value' => $product_id, 'fields' => 'ids']);
+    if ( !$bom_query->have_posts() ) {
+        return;
+    }
+
+    $bom_id = $bom_query->posts[0];
+    $components = get_post_meta( $bom_id, '_wp_mms_components', true );
+
+    if ( empty( $components ) || !is_array( $components ) ) {
+        return;
+    }
+
+    foreach ( $components as $item ) {
+        $component_id = $item['product_id'];
+        if ( empty( $component_id ) ) continue;
+
+        $component_qty_per_parent = floatval( $item['quantity'] );
+        $total_component_qty = $component_qty_per_parent * $qty_needed;
+        $component_item_type = get_post_meta( $component_id, '_wp_mms_item_type', true );
+
+        if ( 'finished_good' === $component_item_type ) {
+            wp_mms_get_exploded_bom_recursive( $component_id, $total_component_qty, $raw_materials, $visited_boms );
+        } else {
+            if ( ! isset( $raw_materials[ $component_id ] ) ) {
+                $raw_materials[ $component_id ] = 0;
+            }
+            $raw_materials[ $component_id ] += $total_component_qty;
+        }
+    }
+}
+
+/**
+ * Wrapper function to initiate the BOM explosion.
+ *
+ * @param int $product_id The ID of the finished good.
+ * @return array A flat list of raw materials [id => total_quantity].
+ */
+function wp_mms_get_exploded_bom_materials( $product_id ) {
+    $raw_materials = [];
+    $visited_boms = [];
+    wp_mms_get_exploded_bom_recursive( $product_id, 1, $raw_materials, $visited_boms );
+    return $raw_materials;
 }

@@ -60,9 +60,10 @@ jQuery(document).ready(function($) {
         if (typeof wp_mms_data !== 'undefined' && typeof wp_mms_data.components !== 'undefined') {
             var select = newRow.find('.component-product-select');
             $.each(wp_mms_data.components, function(index, component) {
+                var displayText = component.title + ' (' + component.type + ')';
                 select.append($('<option>', {
                     value: component.id,
-                    text: component.title
+                    text: displayText
                 }));
             });
         }

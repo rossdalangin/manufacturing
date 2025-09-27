@@ -37,23 +37,26 @@ function wp_mms_admin_enqueue_assets( $hook ) {
         // Prepare data for the script
         $localized_data = [];
         if ( 'wp_mms_bom' === $post->post_type ) {
+            // Allow any product to be a component for multi-level BOMs.
             $component_products_query = get_posts( [
                 'post_type' => 'wp_mms_product',
                 'numberposts' => -1,
                 'orderby' => 'title',
                 'order' => 'ASC',
-                'meta_query' => [
-                    'relation' => 'OR',
-                    ['meta_key' => '_wp_mms_item_type', 'meta_value' => 'raw_material'],
-                    ['meta_key' => '_wp_mms_item_type', 'meta_value' => 'component']
-                ]
             ] );
 
             $components = [];
+            $item_type_labels = [
+                'raw_material' => __( 'Raw Material', 'wp-mms' ),
+                'component' => __( 'Component', 'wp-mms' ),
+                'finished_good' => __( 'Sub-Assembly', 'wp-mms' ),
+            ];
             foreach ($component_products_query as $product) {
+                $item_type = get_post_meta( $product->ID, '_wp_mms_item_type', true );
                 $components[] = [
                     'id' => $product->ID,
-                    'title' => $product->post_title
+                    'title' => $product->post_title,
+                    'type' => $item_type_labels[$item_type] ?? $item_type,
                 ];
             }
             $localized_data['components'] = $components;

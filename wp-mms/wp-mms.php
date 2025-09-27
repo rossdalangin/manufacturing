@@ -22,9 +22,6 @@ define( 'WP_MMS_VERSION', '1.0.0' );
 define( 'WP_MMS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'WP_MMS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
-// Include the autoloader
-// require_once WP_MMS_PLUGIN_DIR . 'includes/autoloader.php';
-
 // Include core plugin files
 require_once WP_MMS_PLUGIN_DIR . 'includes/cpt-setup.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/admin-menu.php';
@@ -40,6 +37,6 @@ register_deactivation_hook( __FILE__, 'wp_mms_remove_roles' );
 
 // Initialize the plugin
 function wp_mms_run() {
-    // To be filled in later
+    // Main plugin logic can go here if needed in the future.
 }
-// add_action( 'plugins_loaded', 'wp_mms_run' );
+add_action( 'plugins_loaded', 'wp_mms_run' );
