@@ -31,10 +31,7 @@ add_action( 'add_meta_boxes', 'wp_mms_add_supplier_meta_boxes' );
  * @param WP_Post $post The post object.
  */
 function wp_mms_render_supplier_meta_box( $post ) {
-    // Add a nonce field for security
     wp_nonce_field( 'wp_mms_save_supplier_meta_box_data', 'wp_mms_supplier_meta_box_nonce' );
-
-    // Get existing values
     $contact_name = get_post_meta( $post->ID, '_wp_mms_contact_name', true );
     $email = get_post_meta( $post->ID, '_wp_mms_email', true );
     $phone = get_post_meta( $post->ID, '_wp_mms_phone', true );
@@ -42,38 +39,15 @@ function wp_mms_render_supplier_meta_box( $post ) {
     $address = get_post_meta( $post->ID, '_wp_mms_address', true );
     $lead_time = get_post_meta( $post->ID, '_wp_mms_lead_time', true );
     $notes = get_post_meta( $post->ID, '_wp_mms_notes', true );
-
-    // Render the fields
     ?>
     <table class="form-table">
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_contact_name"><?php _e( 'Contact Name', 'wp-mms' ); ?></label></th>
-            <td><input type="text" id="wp_mms_contact_name" name="wp_mms_contact_name" value="<?php echo esc_attr( $contact_name ); ?>" class="regular-text" /></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_email"><?php _e( 'Email Address', 'wp-mms' ); ?></label></th>
-            <td><input type="email" id="wp_mms_email" name="wp_mms_email" value="<?php echo esc_attr( $email ); ?>" class="regular-text" /></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_phone"><?php _e( 'Phone Number', 'wp-mms' ); ?></label></th>
-            <td><input type="text" id="wp_mms_phone" name="wp_mms_phone" value="<?php echo esc_attr( $phone ); ?>" class="regular-text" /></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_website"><?php _e( 'Website', 'wp-mms' ); ?></label></th>
-            <td><input type="url" id="wp_mms_website" name="wp_mms_website" value="<?php echo esc_attr( $website ); ?>" class="regular-text" /></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_address"><?php _e( 'Address', 'wp-mms' ); ?></label></th>
-            <td><textarea id="wp_mms_address" name="wp_mms_address" rows="4" class="large-text"><?php echo esc_textarea( $address ); ?></textarea></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_lead_time"><?php _e( 'Lead Time (Days)', 'wp-mms' ); ?></label></th>
-            <td><input type="number" id="wp_mms_lead_time" name="wp_mms_lead_time" value="<?php echo esc_attr( $lead_time ); ?>" class="small-text" min="0" step="1" /></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_notes"><?php _e( 'Internal Notes', 'wp-mms' ); ?></label></th>
-            <td><textarea id="wp_mms_notes" name="wp_mms_notes" rows="6" class="large-text"><?php echo esc_textarea( $notes ); ?></textarea></td>
-        </tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_contact_name"><?php _e( 'Contact Name', 'wp-mms' ); ?></label></th><td><input type="text" id="wp_mms_contact_name" name="wp_mms_contact_name" value="<?php echo esc_attr( $contact_name ); ?>" class="regular-text" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_email"><?php _e( 'Email Address', 'wp-mms' ); ?></label></th><td><input type="email" id="wp_mms_email" name="wp_mms_email" value="<?php echo esc_attr( $email ); ?>" class="regular-text" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_phone"><?php _e( 'Phone Number', 'wp-mms' ); ?></label></th><td><input type="text" id="wp_mms_phone" name="wp_mms_phone" value="<?php echo esc_attr( $phone ); ?>" class="regular-text" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_website"><?php _e( 'Website', 'wp-mms' ); ?></label></th><td><input type="url" id="wp_mms_website" name="wp_mms_website" value="<?php echo esc_attr( $website ); ?>" class="regular-text" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_address"><?php _e( 'Address', 'wp-mms' ); ?></label></th><td><textarea id="wp_mms_address" name="wp_mms_address" rows="4" class="large-text"><?php echo esc_textarea( $address ); ?></textarea></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_lead_time"><?php _e( 'Lead Time (Days)', 'wp-mms' ); ?></label></th><td><input type="number" id="wp_mms_lead_time" name="wp_mms_lead_time" value="<?php echo esc_attr( $lead_time ); ?>" class="small-text" min="0" step="1" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_notes"><?php _e( 'Internal Notes', 'wp-mms' ); ?></label></th><td><textarea id="wp_mms_notes" name="wp_mms_notes" rows="6" class="large-text"><?php echo esc_textarea( $notes ); ?></textarea></td></tr>
     </table>
     <?php
 }
@@ -84,70 +58,35 @@ function wp_mms_render_supplier_meta_box( $post ) {
  * @param int $post_id The ID of the post being saved.
  */
 function wp_mms_save_supplier_meta_box_data( $post_id ) {
-    // Check if our nonce is set.
-    if ( ! isset( $_POST['wp_mms_supplier_meta_box_nonce'] ) ) {
-        return;
-    }
-    // Verify that the nonce is valid.
-    if ( ! wp_verify_nonce( $_POST['wp_mms_supplier_meta_box_nonce'], 'wp_mms_save_supplier_meta_box_data' ) ) {
-        return;
-    }
-    // If this is an autosave, our form has not been submitted, so we don't want to do anything.
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-        return;
-    }
-    // Check the user's permissions.
-    if ( isset( $_POST['post_type'] ) && 'wp_mms_supplier' == $_POST['post_type'] ) {
-        if ( ! current_user_can( 'edit_mms_supplier', $post_id ) ) {
-            return;
-        }
-    }
+    if ( ! isset( $_POST['wp_mms_supplier_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_supplier_meta_box_nonce'], 'wp_mms_save_supplier_meta_box_data' ) ) return;
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+    if ( ! current_user_can( 'edit_mms_supplier', $post_id ) ) return;
 
-    // Sanitize user input and update the meta fields.
     $fields = [
-        'wp_mms_contact_name' => 'sanitize_text_field',
-        'wp_mms_email'        => 'sanitize_email',
-        'wp_mms_phone'        => 'sanitize_text_field',
-        'wp_mms_website'      => 'esc_url_raw',
-        'wp_mms_address'      => 'sanitize_textarea_field',
-        'wp_mms_lead_time'    => 'intval',
-        'wp_mms_notes'        => 'sanitize_textarea_field',
+        'wp_mms_contact_name' => 'sanitize_text_field', 'wp_mms_email' => 'sanitize_email', 'wp_mms_phone' => 'sanitize_text_field', 'wp_mms_website' => 'esc_url_raw',
+        'wp_mms_address' => 'sanitize_textarea_field', 'wp_mms_lead_time' => 'intval', 'wp_mms_notes' => 'sanitize_textarea_field',
     ];
-
     foreach ( $fields as $key => $sanitize_callback ) {
         if ( isset( $_POST[ $key ] ) ) {
-            $value = call_user_func( $sanitize_callback, $_POST[ $key ] );
-            update_post_meta( $post_id, '_' . $key, $value );
+            update_post_meta( $post_id, '_' . $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
         }
     }
 }
-add_action( 'save_post', 'wp_mms_save_supplier_meta_box_data' );
+add_action( 'save_post_wp_mms_supplier', 'wp_mms_save_supplier_meta_box_data' );
 
 /**
  * Add meta boxes for the Product CPT.
  */
 function wp_mms_add_product_meta_boxes() {
-    add_meta_box(
-        'wp_mms_product_details',
-        __( 'Product Details', 'wp-mms' ),
-        'wp_mms_render_product_meta_box',
-        'wp_mms_product',
-        'normal',
-        'high'
-    );
+    add_meta_box( 'wp_mms_product_details', __( 'Product Details', 'wp-mms' ), 'wp_mms_render_product_meta_box', 'wp_mms_product', 'normal', 'high' );
 }
 add_action( 'add_meta_boxes', 'wp_mms_add_product_meta_boxes' );
 
 /**
  * Render the HTML for the Product meta box.
- *
- * @param WP_Post $post The post object.
  */
 function wp_mms_render_product_meta_box( $post ) {
-    // Add a nonce field for security
     wp_nonce_field( 'wp_mms_save_product_meta_box_data', 'wp_mms_product_meta_box_nonce' );
-
-    // Get existing values
     $sku = get_post_meta( $post->ID, '_wp_mms_sku', true );
     $stock_quantity = get_post_meta( $post->ID, '_wp_mms_stock_quantity', true );
     $reorder_point = get_post_meta( $post->ID, '_wp_mms_reorder_point', true );
@@ -156,274 +95,125 @@ function wp_mms_render_product_meta_box( $post ) {
     $unit_cost = get_post_meta( $post->ID, '_wp_mms_unit_cost', true );
     ?>
     <table class="form-table">
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_sku"><?php _e( 'SKU', 'wp-mms' ); ?></label></th>
-            <td><input type="text" id="wp_mms_sku" name="wp_mms_sku" value="<?php echo esc_attr( $sku ); ?>" class="regular-text" /></td>
-        </tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_sku"><?php _e( 'SKU', 'wp-mms' ); ?></label></th><td><input type="text" id="wp_mms_sku" name="wp_mms_sku" value="<?php echo esc_attr( $sku ); ?>" class="regular-text" /></td></tr>
         <tr valign="top">
             <th scope="row"><label for="wp_mms_stock_quantity"><?php _e( 'Stock Quantity', 'wp-mms' ); ?></label></th>
-            <td><input type="number" id="wp_mms_stock_quantity" name="wp_mms_stock_quantity" value="<?php echo esc_attr( $stock_quantity ); ?>" class="small-text" min="0" step="any" /></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_reorder_point"><?php _e( 'Reorder Point', 'wp-mms' ); ?></label></th>
-            <td><input type="number" id="wp_mms_reorder_point" name="wp_mms_reorder_point" value="<?php echo esc_attr( $reorder_point ); ?>" class="small-text" min="0" step="any" /></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_item_type"><?php _e( 'Item Type', 'wp-mms' ); ?></label></th>
             <td>
-                <select id="wp_mms_item_type" name="wp_mms_item_type">
-                    <option value="raw_material" <?php selected( $item_type, 'raw_material' ); ?>><?php _e( 'Raw Material', 'wp-mms' ); ?></option>
-                    <option value="component" <?php selected( $item_type, 'component' ); ?>><?php _e( 'Component', 'wp-mms' ); ?></option>
-                    <option value="finished_good" <?php selected( $item_type, 'finished_good' ); ?>><?php _e( 'Finished Good', 'wp-mms' ); ?></option>
-                </select>
+                <input type="number" id="wp_mms_stock_quantity" name="wp_mms_stock_quantity" value="<?php echo esc_attr( $stock_quantity ); ?>" class="small-text" readonly />
+                <p class="description"><?php _e( 'Stock is automatically calculated from inventory lots. To adjust stock, create or edit lots.', 'wp-mms' ); ?></p>
             </td>
         </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_warehouse_location"><?php _e( 'Warehouse Location', 'wp-mms' ); ?></label></th>
-            <td><input type="text" id="wp_mms_warehouse_location" name="wp_mms_warehouse_location" value="<?php echo esc_attr( $location ); ?>" class="regular-text" /></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_unit_cost"><?php _e( 'Unit Cost', 'wp-mms' ); ?></label></th>
-            <td><input type="number" id="wp_mms_unit_cost" name="wp_mms_unit_cost" value="<?php echo esc_attr( $unit_cost ); ?>" class="small-text" min="0" step="0.01" /></td>
-        </tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_reorder_point"><?php _e( 'Reorder Point', 'wp-mms' ); ?></label></th><td><input type="number" id="wp_mms_reorder_point" name="wp_mms_reorder_point" value="<?php echo esc_attr( $reorder_point ); ?>" class="small-text" min="0" step="any" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_item_type"><?php _e( 'Item Type', 'wp-mms' ); ?></label></th><td><select id="wp_mms_item_type" name="wp_mms_item_type"><option value="raw_material" <?php selected( $item_type, 'raw_material' ); ?>><?php _e( 'Raw Material', 'wp-mms' ); ?></option><option value="component" <?php selected( $item_type, 'component' ); ?>><?php _e( 'Component', 'wp-mms' ); ?></option><option value="finished_good" <?php selected( $item_type, 'finished_good' ); ?>><?php _e( 'Finished Good', 'wp-mms' ); ?></option></select></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_warehouse_location"><?php _e( 'Warehouse Location', 'wp-mms' ); ?></label></th><td><input type="text" id="wp_mms_warehouse_location" name="wp_mms_warehouse_location" value="<?php echo esc_attr( $location ); ?>" class="regular-text" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_unit_cost"><?php _e( 'Unit Cost', 'wp-mms' ); ?></label></th><td><input type="number" id="wp_mms_unit_cost" name="wp_mms_unit_cost" value="<?php echo esc_attr( $unit_cost ); ?>" class="small-text" min="0" step="0.01" /></td></tr>
     </table>
     <?php
 }
 
 /**
  * Save the meta box data for the Product CPT.
- *
- * @param int $post_id The ID of the post being saved.
  */
 function wp_mms_save_product_meta_box_data( $post_id ) {
-    // Check nonce
-    if ( ! isset( $_POST['wp_mms_product_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_product_meta_box_nonce'], 'wp_mms_save_product_meta_box_data' ) ) {
-        return;
-    }
-    // Check for autosave
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-        return;
-    }
-    // Check user permissions
-    if ( isset( $_POST['post_type'] ) && 'wp_mms_product' == $_POST['post_type'] ) {
-        if ( ! current_user_can( 'edit_mms_product', $post_id ) ) {
-            return;
-        }
-    }
-
-    // Sanitize and save the data
+    if ( ! isset( $_POST['wp_mms_product_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_product_meta_box_nonce'], 'wp_mms_save_product_meta_box_data' ) ) return;
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+    if ( ! current_user_can( 'edit_mms_product', $post_id ) ) return;
     $fields = [
-        'wp_mms_sku' => 'sanitize_text_field',
-        'wp_mms_stock_quantity' => 'floatval',
-        'wp_mms_reorder_point' => 'floatval',
-        'wp_mms_item_type' => 'sanitize_text_field',
-        'wp_mms_warehouse_location' => 'sanitize_text_field',
-        'wp_mms_unit_cost' => 'floatval',
+        'wp_mms_sku' => 'sanitize_text_field', 'wp_mms_reorder_point' => 'floatval', 'wp_mms_item_type' => 'sanitize_text_field',
+        'wp_mms_warehouse_location' => 'sanitize_text_field', 'wp_mms_unit_cost' => 'floatval',
     ];
-
     foreach ( $fields as $key => $sanitize_callback ) {
         if ( isset( $_POST[ $key ] ) ) {
-            $value = call_user_func( $sanitize_callback, $_POST[ $key ] );
-            update_post_meta( $post_id, '_' . $key, $value );
+            update_post_meta( $post_id, '_' . $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
         }
     }
 }
-add_action( 'save_post', 'wp_mms_save_product_meta_box_data' );
+add_action( 'save_post_wp_mms_product', 'wp_mms_save_product_meta_box_data' );
 
 /**
  * Add meta boxes for the Purchase Order CPT.
  */
 function wp_mms_add_purchase_order_meta_boxes() {
-    add_meta_box(
-        'wp_mms_po_details',
-        __( 'Purchase Order Details', 'wp-mms' ),
-        'wp_mms_render_po_meta_box',
-        'wp_mms_purchase_order',
-        'normal',
-        'high'
-    );
+    add_meta_box( 'wp_mms_po_details', __( 'Purchase Order Details', 'wp-mms' ), 'wp_mms_render_po_meta_box', 'wp_mms_purchase_order', 'normal', 'high' );
 }
 add_action( 'add_meta_boxes', 'wp_mms_add_purchase_order_meta_boxes' );
 
 /**
  * Render the HTML for the Purchase Order meta box.
- *
- * @param WP_Post $post The post object.
  */
 function wp_mms_render_po_meta_box( $post ) {
     wp_nonce_field( 'wp_mms_save_po_meta_box_data', 'wp_mms_po_meta_box_nonce' );
-
-    // Get existing values
     $supplier_id = get_post_meta( $post->ID, '_wp_mms_supplier_id', true );
     $status = get_post_meta( $post->ID, '_wp_mms_status', true );
     $order_date = get_post_meta( $post->ID, '_wp_mms_order_date', true );
     $expected_date = get_post_meta( $post->ID, '_wp_mms_expected_date', true );
     $line_items = get_post_meta( $post->ID, '_wp_mms_line_items', true );
-
-    // Get all suppliers and products
     $suppliers = get_posts( array( 'post_type' => 'wp_mms_supplier', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC' ) );
     $products = get_posts( array( 'post_type' => 'wp_mms_product', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC' ) );
     ?>
     <table class="form-table">
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_supplier_id"><?php _e( 'Supplier', 'wp-mms' ); ?></label></th>
-            <td>
-                <select id="wp_mms_supplier_id" name="wp_mms_supplier_id" class="widefat">
-                    <option value=""><?php _e( 'Select a Supplier', 'wp-mms' ); ?></option>
-                    <?php foreach ( $suppliers as $supplier ) : ?>
-                        <option value="<?php echo esc_attr( $supplier->ID ); ?>" <?php selected( $supplier_id, $supplier->ID ); ?>><?php echo esc_html( $supplier->post_title ); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_status"><?php _e( 'Order Status', 'wp-mms' ); ?></label></th>
-            <td>
-                <select id="wp_mms_status" name="wp_mms_status">
-                    <option value="pending" <?php selected( $status, 'pending' ); ?>><?php _e( 'Pending', 'wp-mms' ); ?></option>
-                    <option value="approved" <?php selected( $status, 'approved' ); ?>><?php _e( 'Approved', 'wp-mms' ); ?></option>
-                    <option value="shipped" <?php selected( $status, 'shipped' ); ?>><?php _e( 'Shipped', 'wp-mms' ); ?></option>
-                    <option value="received" <?php selected( $status, 'received' ); ?>><?php _e( 'Received', 'wp-mms' ); ?></option>
-                    <option value="canceled" <?php selected( $status, 'canceled' ); ?>><?php _e( 'Canceled', 'wp-mms' ); ?></option>
-                </select>
-            </td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_order_date"><?php _e( 'Order Date', 'wp-mms' ); ?></label></th>
-            <td><input type="date" id="wp_mms_order_date" name="wp_mms_order_date" value="<?php echo esc_attr( $order_date ); ?>" /></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_expected_date"><?php _e( 'Expected Delivery Date', 'wp-mms' ); ?></label></th>
-            <td><input type="date" id="wp_mms_expected_date" name="wp_mms_expected_date" value="<?php echo esc_attr( $expected_date ); ?>" /></td>
-        </tr>
-    </table>
-    <hr>
-    <h3><?php _e( 'Products on this Order', 'wp-mms' ); ?></h3>
+        <tr valign="top"><th scope="row"><label for="wp_mms_supplier_id"><?php _e( 'Supplier', 'wp-mms' ); ?></label></th><td><select id="wp_mms_supplier_id" name="wp_mms_supplier_id" class="widefat"><option value=""><?php _e( 'Select a Supplier', 'wp-mms' ); ?></option><?php foreach ( $suppliers as $supplier ) : ?><option value="<?php echo esc_attr( $supplier->ID ); ?>" <?php selected( $supplier_id, $supplier->ID ); ?>><?php echo esc_html( $supplier->post_title ); ?></option><?php endforeach; ?></select></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_status"><?php _e( 'Order Status', 'wp-mms' ); ?></label></th><td><select id="wp_mms_status" name="wp_mms_status"><option value="pending" <?php selected( $status, 'pending' ); ?>><?php _e( 'Pending', 'wp-mms' ); ?></option><option value="approved" <?php selected( $status, 'approved' ); ?>><?php _e( 'Approved', 'wp-mms' ); ?></option><option value="shipped" <?php selected( $status, 'shipped' ); ?>><?php _e( 'Shipped', 'wp-mms' ); ?></option><option value="received" <?php selected( $status, 'received' ); ?>><?php _e( 'Received', 'wp-mms' ); ?></option><option value="canceled" <?php selected( $status, 'canceled' ); ?>><?php _e( 'Canceled', 'wp-mms' ); ?></option></select></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_order_date"><?php _e( 'Order Date', 'wp-mms' ); ?></label></th><td><input type="date" id="wp_mms_order_date" name="wp_mms_order_date" value="<?php echo esc_attr( $order_date ); ?>" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_expected_date"><?php _e( 'Expected Delivery Date', 'wp-mms' ); ?></label></th><td><input type="date" id="wp_mms_expected_date" name="wp_mms_expected_date" value="<?php echo esc_attr( $expected_date ); ?>" /></td></tr>
+    </table><hr><h3><?php _e( 'Products on this Order', 'wp-mms' ); ?></h3>
     <table id="po-line-items" class="wp-list-table widefat fixed striped">
-        <thead>
-            <tr>
-                <th class="manage-column" style="width: 50%;"><?php _e( 'Product', 'wp-mms' ); ?></th>
-                <th class="manage-column" style="width: 15%;"><?php _e( 'Quantity', 'wp-mms' ); ?></th>
-                <th class="manage-column" style="width: 15%;"><?php _e( 'Unit Price', 'wp-mms' ); ?></th>
-                <th class="manage-column" style="width: 20%;"><?php _e( 'Actions', 'wp-mms' ); ?></th>
-            </tr>
-        </thead>
+        <thead><tr><th class="manage-column" style="width: 50%;"><?php _e( 'Product', 'wp-mms' ); ?></th><th class="manage-column" style="width: 15%;"><?php _e( 'Quantity', 'wp-mms' ); ?></th><th class="manage-column" style="width: 15%;"><?php _e( 'Unit Price', 'wp-mms' ); ?></th><th class="manage-column" style="width: 20%;"><?php _e( 'Actions', 'wp-mms' ); ?></th></tr></thead>
         <tbody id="line-items-container">
-            <?php
-            if ( ! empty( $line_items ) && is_array( $line_items ) ) {
-                foreach ( $line_items as $i => $item ) {
-                    ?>
-                    <tr class="line-item">
-                        <td>
-                            <select name="wp_mms_line_items[<?php echo $i; ?>][product_id]" class="widefat">
-                                <option value=""><?php _e( 'Select a Product', 'wp-mms' ); ?></option>
-                                <?php foreach ( $products as $product ) : ?>
-                                    <option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $item['product_id'], $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </td>
-                        <td><input type="number" name="wp_mms_line_items[<?php echo $i; ?>][quantity]" value="<?php echo esc_attr( $item['quantity'] ); ?>" class="small-text" min="1" step="1" /></td>
-                        <td><input type="number" name="wp_mms_line_items[<?php echo $i; ?>][unit_price]" value="<?php echo esc_attr( $item['unit_price'] ); ?>" class="small-text" min="0" step="0.01" /></td>
-                        <td><a href="#" class="button remove-line-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
-                    </tr>
-                    <?php
-                }
-            }
-            ?>
+            <?php if ( ! empty( $line_items ) && is_array( $line_items ) ) : foreach ( $line_items as $i => $item ) : ?>
+                <tr class="line-item">
+                    <td><select name="wp_mms_line_items[<?php echo $i; ?>][product_id]" class="widefat"><option value=""><?php _e( 'Select a Product', 'wp-mms' ); ?></option><?php foreach ( $products as $product ) : ?><option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $item['product_id'], $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option><?php endforeach; ?></select></td>
+                    <td><input type="number" name="wp_mms_line_items[<?php echo $i; ?>][quantity]" value="<?php echo esc_attr( $item['quantity'] ); ?>" class="small-text" min="1" step="1" /></td>
+                    <td><input type="number" name="wp_mms_line_items[<?php echo $i; ?>][unit_price]" value="<?php echo esc_attr( $item['unit_price'] ); ?>" class="small-text" min="0" step="0.01" /></td>
+                    <td><a href="#" class="button remove-line-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
+                </tr>
+            <?php endforeach; endif; ?>
         </tbody>
     </table>
-    <p>
-        <a href="#" id="add-line-item" class="button button-primary"><?php _e( 'Add Product', 'wp-mms' ); ?></a>
-    </p>
+    <p><a href="#" id="add-line-item" class="button button-primary"><?php _e( 'Add Product', 'wp-mms' ); ?></a></p>
     <script type="text/template" id="line-item-template">
-        <tr class="line-item">
-            <td>
-                <select name="wp_mms_line_items[{index}][product_id]" class="widefat">
-                    <option value=""><?php _e( 'Select a Product', 'wp-mms' ); ?></option>
-                    <?php foreach ( $products as $product ) : ?>
-                        <option value="<?php echo esc_attr( $product->ID ); ?>"><?php echo esc_html( $product->post_title ); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </td>
-            <td><input type="number" name="wp_mms_line_items[{index}][quantity]" value="1" class="small-text" min="1" step="1" /></td>
-            <td><input type="number" name="wp_mms_line_items[{index}][unit_price]" value="0.00" class="small-text" min="0" step="0.01" /></td>
-            <td><a href="#" class="button remove-line-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
-        </tr>
+        <tr class="line-item"><td><select name="wp_mms_line_items[{index}][product_id]" class="widefat"><option value=""><?php _e( 'Select a Product', 'wp-mms' ); ?></option><?php foreach ( $products as $product ) : ?><option value="<?php echo esc_attr( $product->ID ); ?>"><?php echo esc_html( $product->post_title ); ?></option><?php endforeach; ?></select></td><td><input type="number" name="wp_mms_line_items[{index}][quantity]" value="1" class="small-text" min="1" step="1" /></td><td><input type="number" name="wp_mms_line_items[{index}][unit_price]" value="0.00" class="small-text" min="0" step="0.01" /></td><td><a href="#" class="button remove-line-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td></tr>
     </script>
     <?php
 }
 
-
 /**
  * Save the meta box data for the Purchase Order CPT and handle stock updates.
- *
- * @param int $post_id The ID of the post being saved.
  */
 function wp_mms_save_po_meta_box_data( $post_id ) {
-    if ( ! isset( $_POST['wp_mms_po_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_po_meta_box_nonce'], 'wp_mms_save_po_meta_box_data' ) ) {
-        return;
-    }
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-        return;
-    }
-    if ( ! current_user_can( 'edit_mms_purchase_order', $post_id ) ) {
-        return;
-    }
-    if ( get_post_type( $post_id ) !== 'wp_mms_purchase_order' ) {
-        return;
-    }
+    if ( ! isset( $_POST['wp_mms_po_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_po_meta_box_nonce'], 'wp_mms_save_po_meta_box_data' ) ) return;
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+    if ( ! current_user_can( 'edit_mms_purchase_order', $post_id ) ) return;
 
-    // Get old data BEFORE any changes are made
     $old_status = get_post_meta( $post_id, '_wp_mms_status', true );
     $old_line_items = get_post_meta( $post_id, '_wp_mms_line_items', true ) ?: [];
-
-    // Get new status from submission
     $new_status = isset( $_POST['wp_mms_status'] ) ? sanitize_text_field( $_POST['wp_mms_status'] ) : '';
-
-    // Save main fields
     $fields = [
-        'wp_mms_supplier_id' => 'intval',
-        'wp_mms_status' => 'sanitize_text_field',
-        'wp_mms_order_date' => 'sanitize_text_field',
-        'wp_mms_expected_date' => 'sanitize_text_field',
+        'wp_mms_supplier_id' => 'intval', 'wp_mms_status' => 'sanitize_text_field', 'wp_mms_order_date' => 'sanitize_text_field', 'wp_mms_expected_date' => 'sanitize_text_field',
     ];
     foreach ( $fields as $key => $sanitize_callback ) {
         if ( isset( $_POST[ $key ] ) ) {
-            $value = call_user_func( $sanitize_callback, $_POST[ $key ] );
-            update_post_meta( $post_id, '_' . $key, $value );
+            update_post_meta( $post_id, '_' . $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
         }
     }
-
-    // Sanitize and save line items
     $new_line_items = [];
     if ( isset( $_POST['wp_mms_line_items'] ) && is_array( $_POST['wp_mms_line_items'] ) ) {
         foreach ( $_POST['wp_mms_line_items'] as $item ) {
-            if ( empty( $item['product_id'] ) ) {
-                continue;
-            }
-            $new_line_items[] = [
-                'product_id' => intval( $item['product_id'] ),
-                'quantity'   => intval( $item['quantity'] ),
-                'unit_price' => floatval( $item['unit_price'] ),
-            ];
+            if ( empty( $item['product_id'] ) ) continue;
+            $new_line_items[] = [ 'product_id' => intval( $item['product_id'] ), 'quantity' => intval( $item['quantity'] ), 'unit_price' => floatval( $item['unit_price'] ) ];
         }
     }
     update_post_meta( $post_id, '_wp_mms_line_items', $new_line_items );
 
-    // --- Lot-Based Stock Adjustment Logic ---
+    $affected_products = [];
+    foreach($new_line_items as $item) { if($item['product_id']) $affected_products[] = $item['product_id']; }
+    foreach($old_line_items as $item) { if($item['product_id']) $affected_products[] = $item['product_id']; }
 
     $create_lots_for_po = function( $po_id, $line_items ) {
         if( empty($line_items) || !is_array($line_items) ) return;
-
         $created_lot_ids = [];
         foreach( $line_items as $index => $item ) {
-            $lot_number = 'PO-' . $po_id . '-' . ($index + 1);
-            $lot_args = [
-                'post_title'   => $lot_number,
-                'post_status'  => 'publish',
-                'post_type'    => 'wp_mms_lot',
-            ];
-            $new_lot_id = wp_insert_post( $lot_args, true );
+            $new_lot_id = wp_insert_post( [ 'post_title' => 'PO-' . $po_id . '-' . ($index + 1), 'post_status' => 'publish', 'post_type' => 'wp_mms_lot' ], true );
             if ( !is_wp_error($new_lot_id) ) {
                 update_post_meta( $new_lot_id, '_wp_mms_product_id', $item['product_id'] );
                 update_post_meta( $new_lot_id, '_wp_mms_quantity', $item['quantity'] );
@@ -432,220 +222,148 @@ function wp_mms_save_po_meta_box_data( $post_id ) {
         }
         update_post_meta( $po_id, '_wp_mms_created_lot_ids', $created_lot_ids );
     };
-
     $delete_lots_for_po = function( $po_id ) {
         $lot_ids = get_post_meta( $po_id, '_wp_mms_created_lot_ids', true );
         if ( !empty($lot_ids) && is_array($lot_ids) ) {
             foreach( $lot_ids as $lot_id ) {
-                wp_delete_post( $lot_id, true ); // true to force delete
+                wp_delete_post( $lot_id, true );
             }
         }
         delete_post_meta( $po_id, '_wp_mms_created_lot_ids' );
     };
 
-    // Case 1: Status changed TO received
     if ( $new_status === 'received' && $old_status !== 'received' ) {
         $create_lots_for_po( $post_id, $new_line_items );
         update_post_meta( $post_id, '_wp_mms_date_received', current_time( 'Y-m-d' ) );
-    }
-    // Case 2: Status changed FROM received
-    else if ( $new_status !== 'received' && $old_status === 'received' ) {
+    } else if ( $new_status !== 'received' && $old_status === 'received' ) {
         $delete_lots_for_po( $post_id );
         delete_post_meta( $post_id, '_wp_mms_date_received' );
-    }
-    // Case 3: Status REMAINS received, but line items might have changed
-    else if ( $new_status === 'received' && $old_status === 'received' ) {
+    } else if ( $new_status === 'received' && $old_status === 'received' ) {
         if ( $old_line_items != $new_line_items ) {
             $delete_lots_for_po( $post_id );
             $create_lots_for_po( $post_id, $new_line_items );
         }
     }
-    // Case 4 (implied): Status was not and is not 'received'. Do nothing.
+
+    if ( !empty($affected_products) ) {
+        foreach( array_unique($affected_products) as $product_id ) {
+            if ( $product_id ) {
+                wp_mms_update_product_stock_from_lots( $product_id );
+            }
+        }
+    }
 }
-add_action( 'save_post', 'wp_mms_save_po_meta_box_data' );
+add_action( 'save_post_wp_mms_purchase_order', 'wp_mms_save_po_meta_box_data' );
 
 /**
  * Add meta boxes for the BOM CPT.
  */
 function wp_mms_add_bom_meta_boxes() {
-    add_meta_box(
-        'wp_mms_bom_details',
-        __( 'Bill of Materials Details', 'wp-mms' ),
-        'wp_mms_render_bom_meta_box',
-        'wp_mms_bom',
-        'normal',
-        'high'
-    );
+    add_meta_box( 'wp_mms_bom_details', __( 'Bill of Materials Details', 'wp-mms' ), 'wp_mms_render_bom_meta_box', 'wp_mms_bom', 'normal', 'high' );
 }
 add_action( 'add_meta_boxes', 'wp_mms_add_bom_meta_boxes' );
 
 /**
  * Render the HTML for the BOM meta box.
- *
- * @param WP_Post $post The post object.
  */
 function wp_mms_render_bom_meta_box( $post ) {
     wp_nonce_field( 'wp_mms_save_bom_meta_box_data', 'wp_mms_bom_meta_box_nonce' );
-
-    // Get existing values
     $finished_product_id = get_post_meta( $post->ID, '_wp_mms_finished_product_id', true );
     $components = get_post_meta( $post->ID, '_wp_mms_components', true );
-
-    // Get finished goods (products) and all possible components
     $finished_goods = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC', 'meta_key' => '_wp_mms_item_type', 'meta_value' => 'finished_good'] );
     $component_products = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC'] );
-
     ?>
     <table class="form-table">
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_finished_product_id"><?php _e( 'Finished Product', 'wp-mms' ); ?></label></th>
-            <td>
-                <select id="wp_mms_finished_product_id" name="wp_mms_finished_product_id" class="widefat">
-                    <option value=""><?php _e( 'Select a Finished Product', 'wp-mms' ); ?></option>
-                    <?php foreach ( $finished_goods as $product ) : ?>
-                        <option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $finished_product_id, $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <p class="description"><?php _e( 'Select the final product that this Bill of Materials is for.', 'wp-mms' ); ?></p>
-            </td>
-        </tr>
-    </table>
-    <hr>
-    <h3><?php _e( 'Components', 'wp-mms' ); ?></h3>
+        <tr valign="top"><th scope="row"><label for="wp_mms_finished_product_id"><?php _e( 'Finished Product', 'wp-mms' ); ?></label></th><td><select id="wp_mms_finished_product_id" name="wp_mms_finished_product_id" class="widefat"><option value=""><?php _e( 'Select a Finished Product', 'wp-mms' ); ?></option><?php foreach ( $finished_goods as $product ) : ?><option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $finished_product_id, $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option><?php endforeach; ?></select><p class="description"><?php _e( 'Select the final product that this Bill of Materials is for.', 'wp-mms' ); ?></p></td></tr>
+    </table><hr><h3><?php _e( 'Components', 'wp-mms' ); ?></h3>
     <table id="bom-components" class="wp-list-table widefat fixed striped">
-        <thead>
-            <tr>
-                <th class="manage-column column-icon" style="width: 5%;"></th>
-                <th class="manage-column" style="width: 65%;"><?php _e( 'Component Product', 'wp-mms' ); ?></th>
-                <th class="manage-column" style="width: 15%;"><?php _e( 'Quantity', 'wp-mms' ); ?></th>
-                <th class="manage-column" style="width: 15%;"><?php _e( 'Actions', 'wp-mms' ); ?></th>
-            </tr>
-        </thead>
+        <thead><tr><th class="manage-column column-icon" style="width: 5%;"></th><th class="manage-column" style="width: 65%;"><?php _e( 'Component Product', 'wp-mms' ); ?></th><th class="manage-column" style="width: 15%;"><?php _e( 'Quantity', 'wp-mms' ); ?></th><th class="manage-column" style="width: 15%;"><?php _e( 'Actions', 'wp-mms' ); ?></th></tr></thead>
         <tbody id="components-container">
-             <?php
-            if ( ! empty( $components ) && is_array( $components ) ) {
-                foreach ( $components as $i => $item ) {
-                    ?>
-                    <tr class="component-item">
-                        <td class="component-handle" style="cursor: move; text-align: center;"><span class="dashicons dashicons-move"></span></td>
-                        <td>
-                            <select name="wp_mms_components[<?php echo $i; ?>][product_id]" class="widefat">
-                                <option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option>
-                                <?php
-                                $item_type_labels = [
-                                    'raw_material' => __( 'Raw Material', 'wp-mms' ),
-                                    'component' => __( 'Component', 'wp-mms' ),
-                                    'finished_good' => __( 'Sub-Assembly', 'wp-mms' ),
-                                ];
-                                foreach ( $component_products as $product ) :
-                                    $item_type = get_post_meta( $product->ID, '_wp_mms_item_type', true );
-                                    $display_text = $product->post_title . ' (' . ( $item_type_labels[$item_type] ?? $item_type ) . ')';
-                                ?>
-                                    <option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $item['product_id'], $product->ID ); ?>><?php echo esc_html( $display_text ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </td>
-                        <td><input type="number" name="wp_mms_components[<?php echo $i; ?>][quantity]" value="<?php echo esc_attr( $item['quantity'] ); ?>" class="small-text" min="0" step="any" /></td>
-                        <td><a href="#" class="button remove-component-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
-                    </tr>
-                    <?php
-                }
-            }
-            ?>
+             <?php if ( ! empty( $components ) && is_array( $components ) ) : foreach ( $components as $i => $item ) : ?>
+                <tr class="component-item"><td class="component-handle" style="cursor: move; text-align: center;"><span class="dashicons dashicons-move"></span></td><td><select name="wp_mms_components[<?php echo $i; ?>][product_id]" class="widefat"><option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option><?php $item_type_labels = [ 'raw_material' => __( 'Raw Material', 'wp-mms' ), 'component' => __( 'Component', 'wp-mms' ), 'finished_good' => __( 'Sub-Assembly', 'wp-mms' ) ]; foreach ( $component_products as $product ) : $item_type = get_post_meta( $product->ID, '_wp_mms_item_type', true ); $display_text = $product->post_title . ' (' . ( $item_type_labels[$item_type] ?? $item_type ) . ')'; ?><option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $item['product_id'], $product->ID ); ?>><?php echo esc_html( $display_text ); ?></option><?php endforeach; ?></select><div class="alternatives-container" style="margin-top: 10px;"><?php if ( !empty($item['alternatives']) && is_array($item['alternatives']) ) { foreach( $item['alternatives'] as $alt_i => $alt_id ) { ?><div class="alternative-item" style="margin-top: 5px;"><span class="dashicons dashicons-arrow-right-alt" style="vertical-align: middle;"></span><select name="wp_mms_components[<?php echo $i; ?>][alternatives][<?php echo $alt_i; ?>]" class="widefat" style="width: 80%; display: inline-block;"><option value=""><?php _e( 'Select an Alternative', 'wp-mms' ); ?></option><?php foreach ( $component_products as $product ) : $item_type = get_post_meta( $product->ID, '_wp_mms_item_type', true ); $display_text = $product->post_title . ' (' . ( $item_type_labels[$item_type] ?? $item_type ) . ')'; ?><option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $alt_id, $product->ID ); ?>><?php echo esc_html( $display_text ); ?></option><?php endforeach; ?></select><a href="#" class="button remove-alternative-item" style="vertical-align: middle;">&times;</a></div><?php } } ?></div><a href="#" class="button button-secondary add-alternative-item" style="margin-top: 10px;"><?php _e( 'Add Alternative', 'wp-mms' ); ?></a></td><td><input type="number" name="wp_mms_components[<?php echo $i; ?>][quantity]" value="<?php echo esc_attr( $item['quantity'] ); ?>" class="small-text" min="0" step="any" /></td><td><a href="#" class="button remove-component-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td></tr>
+            <?php endforeach; endif; ?>
         </tbody>
     </table>
-     <p>
-        <a href="#" id="add-component-item" class="button button-primary"><?php _e( 'Add Component', 'wp-mms' ); ?></a>
-    </p>
-    <script type="text/template" id="component-item-template">
-        <tr class="component-item">
-            <td class="component-handle" style="cursor: move; text-align: center;"><span class="dashicons dashicons-move"></span></td>
-            <td>
-                <select name="wp_mms_components[{index}][product_id]" class="widefat component-product-select">
-                     <option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option>
-                </select>
-            </td>
-            <td><input type="number" name="wp_mms_components[{index}][quantity]" value="1" class="small-text" min="0" step="any" /></td>
-            <td><a href="#" class="button remove-component-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
-        </tr>
-    </script>
+    <p><a href="#" id="add-component-item" class="button button-primary"><?php _e( 'Add Component', 'wp-mms' ); ?></a></p>
+    <script type="text/template" id="component-item-template"><tr class="component-item"><td class="component-handle" style="cursor: move; text-align: center;"><span class="dashicons dashicons-move"></span></td><td><select name="wp_mms_components[{index}][product_id]" class="widefat component-product-select"><option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option></select><div class="alternatives-container" style="margin-top: 10px;"></div><a href="#" class="button button-secondary add-alternative-item" style="margin-top: 10px;"><?php _e( 'Add Alternative', 'wp-mms' ); ?></a></td><td><input type="number" name="wp_mms_components[{index}][quantity]" value="1" class="small-text" min="0" step="any" /></td><td><a href="#" class="button remove-component-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td></tr></script>
+    <script type="text/template" id="alternative-item-template"><div class="alternative-item" style="margin-top: 5px;"><span class="dashicons dashicons-arrow-right-alt" style="vertical-align: middle;"></span><select name="wp_mms_components[{component_index}][alternatives][]" class="widefat alternative-product-select" style="width: 80%; display: inline-block;"><option value=""><?php _e( 'Select an Alternative', 'wp-mms' ); ?></option></select><a href="#" class="button remove-alternative-item" style="vertical-align: middle;">&times;</a></div></script>
     <?php
 }
 
 /**
  * Save the meta box data for the BOM CPT.
- *
- * @param int $post_id The ID of the post being saved.
  */
 function wp_mms_save_bom_meta_box_data( $post_id ) {
-    if ( ! isset( $_POST['wp_mms_bom_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_bom_meta_box_nonce'], 'wp_mms_save_bom_meta_box_data' ) ) {
-        return;
-    }
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-        return;
-    }
-    if ( ! current_user_can( 'edit_mms_bom', $post_id ) ) {
-        return;
-    }
-    if ( get_post_type( $post_id ) !== 'wp_mms_bom' ) {
-        return;
-    }
-
-    // Save finished product link
+    if ( ! isset( $_POST['wp_mms_bom_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_bom_meta_box_nonce'], 'wp_mms_save_bom_meta_box_data' ) ) return;
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+    if ( ! current_user_can( 'edit_mms_bom', $post_id ) ) return;
     if ( isset( $_POST['wp_mms_finished_product_id'] ) ) {
         update_post_meta( $post_id, '_wp_mms_finished_product_id', intval( $_POST['wp_mms_finished_product_id'] ) );
     }
-
-    // Save components
     $new_components = [];
     if ( isset( $_POST['wp_mms_components'] ) && is_array( $_POST['wp_mms_components'] ) ) {
         foreach ( $_POST['wp_mms_components'] as $item ) {
-            if ( empty( $item['product_id'] ) || !isset( $item['quantity'] ) ) {
-                continue;
-            }
-            $new_components[] = [
-                'product_id' => intval( $item['product_id'] ),
-                'quantity'   => floatval( $item['quantity'] ),
+            if ( empty( $item['product_id'] ) || !isset( $item['quantity'] ) ) continue;
+            $new_item = [
+                'product_id' => intval( $item['product_id'] ), 'quantity'   => floatval( $item['quantity'] ), 'alternatives' => [],
             ];
+            if ( !empty($item['alternatives']) && is_array($item['alternatives']) ) {
+                foreach ( $item['alternatives'] as $alt_id ) {
+                    if ( !empty($alt_id) ) {
+                        $new_item['alternatives'][] = intval($alt_id);
+                    }
+                }
+            }
+            $new_components[] = $new_item;
         }
     }
     update_post_meta( $post_id, '_wp_mms_components', $new_components );
-
-    // --- Auto Cost Roll-up ---
     wp_mms_calculate_bom_cost( $post_id );
 }
-add_action( 'save_post', 'wp_mms_save_bom_meta_box_data' );
+add_action( 'save_post_wp_mms_bom', 'wp_mms_save_bom_meta_box_data' );
 
 /**
  * Add meta boxes for the Production Order CPT.
  */
 function wp_mms_add_production_order_meta_boxes() {
-    add_meta_box(
-        'wp_mms_production_order_details',
-        __( 'Production Order Details', 'wp-mms' ),
-        'wp_mms_render_production_order_meta_box',
-        'wp_mms_production_order',
-        'normal',
-        'high'
-    );
+    add_meta_box( 'wp_mms_production_order_details', __( 'Production Order Details', 'wp-mms' ), 'wp_mms_render_production_order_meta_box', 'wp_mms_production_order', 'normal', 'high' );
 }
 add_action( 'add_meta_boxes', 'wp_mms_add_production_order_meta_boxes' );
 add_action( 'add_meta_boxes_wp_mms_production_order', 'wp_mms_add_consumed_lots_meta_box' );
 add_action( 'add_meta_boxes_wp_mms_production_order', 'wp_mms_add_scrap_record_meta_box' );
+add_action( 'add_meta_boxes_wp_mms_bom', 'wp_mms_add_bom_versioning_meta_box' );
+
+/**
+ * Add a meta box for BOM versioning.
+ */
+function wp_mms_add_bom_versioning_meta_box( $post ) {
+    add_meta_box( 'wp_mms_bom_versioning', __( 'Versioning', 'wp-mms' ), 'wp_mms_render_bom_versioning_meta_box', 'wp_mms_bom', 'side', 'core' );
+}
+
+/**
+ * Render the HTML for the BOM Versioning meta box.
+ */
+function wp_mms_render_bom_versioning_meta_box( $post ) {
+    $clone_url = wp_nonce_url( admin_url( 'admin-post.php?action=clone_mms_bom&post=' . $post->ID ), 'clone_mms_bom_' . $post->ID );
+    $parent_id = $post->post_parent;
+    $children = get_children( ['post_parent' => $post->ID, 'post_type' => 'wp_mms_bom'] );
+    echo '<p><a href="' . esc_url($clone_url) . '" class="button button-secondary">' . __('Create New Version', 'wp-mms') . '</a></p>';
+    echo '<p class="description">' . __('This will create a new, editable version of this BOM.', 'wp-mms') . '</p>';
+    if ( $parent_id || !empty($children) ) {
+        echo '<hr><strong>' . __('Other Versions:', 'wp-mms') . '</strong>';
+        echo '<ul>';
+        if ($parent_id) printf('<li><a href="%s">%s</a> (%s)</li>', get_edit_post_link($parent_id), get_the_title($parent_id), __('Parent', 'wp-mms'));
+        foreach( $children as $child ) printf('<li><a href="%s">%s</a> (%s)</li>', get_edit_post_link($child->ID), get_the_title($child->ID), __('Child', 'wp-mms'));
+        echo '</ul>';
+    }
+}
 
 /**
  * Add a meta box for recording scrap.
  */
 function wp_mms_add_scrap_record_meta_box( $post ) {
     if ( get_post_meta( $post->ID, '_wp_mms_status', true ) === 'completed' ) {
-        add_meta_box(
-            'wp_mms_scrap_record',
-            __( 'Record Scrap / Wastage', 'wp-mms' ),
-            'wp_mms_render_scrap_record_meta_box',
-            'wp_mms_production_order',
-            'normal',
-            'low'
-        );
+        add_meta_box( 'wp_mms_scrap_record', __( 'Record Scrap / Wastage', 'wp-mms' ), 'wp_mms_render_scrap_record_meta_box', 'wp_mms_production_order', 'normal', 'low' );
     }
 }
 
@@ -654,85 +372,37 @@ function wp_mms_add_scrap_record_meta_box( $post ) {
  */
 function wp_mms_render_scrap_record_meta_box( $post ) {
     $scrapped_items = get_post_meta( $post->ID, '_wp_mms_scrapped_items', true );
-
-    // Get the components from this order's BOM to populate the dropdown
     $product_id = get_post_meta( $post->ID, '_wp_mms_product_id', true );
     $raw_materials = wp_mms_get_exploded_bom_materials( $product_id );
     ?>
     <p class="description"><?php _e( 'Record any component materials that were scrapped during this production run. This will deduct the items from inventory.', 'wp-mms' ); ?></p>
     <table id="scrap-items" class="wp-list-table widefat fixed striped">
-        <thead>
-            <tr>
-                <th style="width: 70%;"><?php _e( 'Component', 'wp-mms' ); ?></th>
-                <th style="width: 15%;"><?php _e( 'Quantity Scrapped', 'wp-mms' ); ?></th>
-                <th style="width: 15%;"><?php _e( 'Actions', 'wp-mms' ); ?></th>
-            </tr>
-        </thead>
+        <thead><tr><th style="width: 70%;"><?php _e( 'Component', 'wp-mms' ); ?></th><th style="width: 15%;"><?php _e( 'Quantity Scrapped', 'wp-mms' ); ?></th><th style="width: 15%;"><?php _e( 'Actions', 'wp-mms' ); ?></th></tr></thead>
         <tbody id="scrap-items-container">
-            <?php
-            if ( ! empty( $scrapped_items ) && is_array( $scrapped_items ) ) {
-                foreach ( $scrapped_items as $i => $item ) {
-                    ?>
-                    <tr class="scrap-item">
-                        <td>
-                            <select name="_wp_mms_scrapped_items[<?php echo $i; ?>][product_id]" class="widefat">
-                                <option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option>
-                                <?php foreach ( $raw_materials as $material_id => $qty ) : ?>
-                                    <option value="<?php echo esc_attr( $material_id ); ?>" <?php selected( $item['product_id'], $material_id ); ?>><?php echo esc_html( get_the_title( $material_id ) ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </td>
-                        <td><input type="number" name="_wp_mms_scrapped_items[<?php echo $i; ?>][quantity]" value="<?php echo esc_attr( $item['quantity'] ); ?>" class="small-text" min="0" step="any" /></td>
-                        <td><a href="#" class="button remove-scrap-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
-                    </tr>
-                    <?php
-                }
-            }
-            ?>
+            <?php if ( ! empty( $scrapped_items ) && is_array( $scrapped_items ) ) : foreach ( $scrapped_items as $i => $item ) : ?>
+                <tr class="scrap-item"><td><select name="_wp_mms_scrapped_items[<?php echo $i; ?>][product_id]" class="widefat"><option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option><?php foreach ( $raw_materials as $material_id => $qty ) : ?><option value="<?php echo esc_attr( $material_id ); ?>" <?php selected( $item['product_id'], $material_id ); ?>><?php echo esc_html( get_the_title( $material_id ) ); ?></option><?php endforeach; ?></select></td><td><input type="number" name="_wp_mms_scrapped_items[<?php echo $i; ?>][quantity]" value="<?php echo esc_attr( $item['quantity'] ); ?>" class="small-text" min="0" step="any" /></td><td><a href="#" class="button remove-scrap-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td></tr>
+            <?php endforeach; endif; ?>
         </tbody>
     </table>
-    <p>
-        <a href="#" id="add-scrap-item" class="button button-primary"><?php _e( 'Add Scrap Item', 'wp-mms' ); ?></a>
-    </p>
-    <script type="text/template" id="scrap-item-template">
-        <tr class="scrap-item">
-            <td>
-                <select name="_wp_mms_scrapped_items[{index}][product_id]" class="widefat scrap-product-select">
-                     <option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option>
-                </select>
-            </td>
-            <td><input type="number" name="_wp_mms_scrapped_items[{index}][quantity]" value="1" class="small-text" min="0" step="any" /></td>
-            <td><a href="#" class="button remove-scrap-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
-        </tr>
-    </script>
+    <p><a href="#" id="add-scrap-item" class="button button-primary"><?php _e( 'Add Scrap Item', 'wp-mms' ); ?></a></p>
+    <script type="text/template" id="scrap-item-template"><tr class="scrap-item"><td><select name="_wp_mms_scrapped_items[{index}][product_id]" class="widefat scrap-product-select"><option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option></select></td><td><input type="number" name="_wp_mms_scrapped_items[{index}][quantity]" value="1" class="small-text" min="0" step="any" /></td><td><a href="#" class="button remove-scrap-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td></tr></script>
     <?php
 }
-
 
 /**
  * Add a meta box to show the consumed lots for a completed production order.
  */
 function wp_mms_add_consumed_lots_meta_box( $post ) {
     if ( get_post_meta( $post->ID, '_wp_mms_status', true ) === 'completed' ) {
-        add_meta_box(
-            'wp_mms_consumed_lots',
-            __( 'Consumption Record', 'wp-mms' ),
-            'wp_mms_render_consumed_lots_meta_box',
-            'wp_mms_production_order',
-            'normal',
-            'low'
-        );
+        add_meta_box( 'wp_mms_consumed_lots', __( 'Consumption Record', 'wp-mms' ), 'wp_mms_render_consumed_lots_meta_box', 'wp_mms_production_order', 'normal', 'low' );
     }
 }
 
 /**
  * Render the HTML for the consumed lots meta box.
- *
- * @param WP_Post $post The post object.
  */
 function wp_mms_render_consumed_lots_meta_box( $post ) {
     $consumed_lots = get_post_meta( $post->ID, '_wp_mms_consumed_lots', true );
-
     if ( empty( $consumed_lots ) || !is_array($consumed_lots) ) {
         echo '<p>' . __( 'No consumption record found.', 'wp-mms' ) . '</p>';
         return;
@@ -740,245 +410,197 @@ function wp_mms_render_consumed_lots_meta_box( $post ) {
     ?>
     <p class="description"><?php _e( 'This table shows the specific component lots that were consumed to fulfill this production order.', 'wp-mms' ); ?></p>
     <table class="wp-list-table widefat fixed striped">
-        <thead>
-            <tr>
-                <th><?php _e( 'Component Lot / Batch', 'wp-mms' ); ?></th>
-                <th><?php _e( 'Quantity Consumed', 'wp-mms' ); ?></th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ( $consumed_lots as $lot_id => $data ) : ?>
-                <tr>
-                    <td><?php echo esc_html( $data['title'] ); ?></td>
-                    <td><?php echo esc_html( $data['qty'] ); ?></td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
+        <thead><tr><th><?php _e( 'Component Lot / Batch', 'wp-mms' ); ?></th><th><?php _e( 'Quantity Consumed', 'wp-mms' ); ?></th></tr></thead>
+        <tbody><?php foreach ( $consumed_lots as $lot_id => $data ) : ?><tr><td><?php echo esc_html( $data['title'] ); ?></td><td><?php echo esc_html( $data['qty'] ); ?></td></tr><?php endforeach; ?></tbody>
     </table>
     <?php
 }
 
-
 /**
  * Render the HTML for the Production Order meta box.
- *
- * @param WP_Post $post The post object.
  */
 function wp_mms_render_production_order_meta_box( $post ) {
     wp_nonce_field( 'wp_mms_save_production_order_meta_box_data', 'wp_mms_production_order_meta_box_nonce' );
-
-    // Get existing values
     $product_id = get_post_meta( $post->ID, '_wp_mms_product_id', true );
+    $bom_id = get_post_meta( $post->ID, '_wp_mms_bom_id', true );
     $quantity = get_post_meta( $post->ID, '_wp_mms_quantity', true );
     $status = get_post_meta( $post->ID, '_wp_mms_status', true );
     $start_date = get_post_meta( $post->ID, '_wp_mms_start_date', true );
     $end_date = get_post_meta( $post->ID, '_wp_mms_end_date', true );
-
-    // Get finished goods
     $finished_goods = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC', 'meta_key' => '_wp_mms_item_type', 'meta_value' => 'finished_good'] );
     ?>
     <table class="form-table">
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_product_id"><?php _e( 'Product to Produce', 'wp-mms' ); ?></label></th>
-            <td>
-                <select id="wp_mms_product_id" name="wp_mms_product_id" class="widefat">
-                    <option value=""><?php _e( 'Select a Product', 'wp-mms' ); ?></option>
-                    <?php foreach ( $finished_goods as $product ) : ?>
-                        <option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $product_id, $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_quantity"><?php _e( 'Quantity to Produce', 'wp-mms' ); ?></label></th>
-            <td><input type="number" id="wp_mms_quantity" name="wp_mms_quantity" value="<?php echo esc_attr( $quantity ); ?>" class="small-text" min="1" step="1" /></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_status"><?php _e( 'Order Status', 'wp-mms' ); ?></label></th>
-            <td>
-                <select id="wp_mms_status" name="wp_mms_status">
-                    <option value="pending" <?php selected( $status, 'pending' ); ?>><?php _e( 'Pending', 'wp-mms' ); ?></option>
-                    <option value="in_progress" <?php selected( $status, 'in_progress' ); ?>><?php _e( 'In Progress', 'wp-mms' ); ?></option>
-                    <option value="completed" <?php selected( $status, 'completed' ); ?>><?php _e( 'Completed', 'wp-mms' ); ?></option>
-                    <option value="canceled" <?php selected( $status, 'canceled' ); ?>><?php _e( 'Canceled', 'wp-mms' ); ?></option>
-                </select>
-            </td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_start_date"><?php _e( 'Start Date', 'wp-mms' ); ?></label></th>
-            <td><input type="date" id="wp_mms_start_date" name="wp_mms_start_date" value="<?php echo esc_attr( $start_date ); ?>" /></td>
-        </tr>
-        <tr valign="top">
-            <th scope="row"><label for="wp_mms_end_date"><?php _e( 'Expected Completion Date', 'wp-mms' ); ?></label></th>
-            <td><input type="date" id="wp_mms_end_date" name="wp_mms_end_date" value="<?php echo esc_attr( $end_date ); ?>" /></td>
-        </tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_product_id"><?php _e( 'Product to Produce', 'wp-mms' ); ?></label></th><td><select id="wp_mms_product_id" name="wp_mms_product_id" class="widefat"><option value=""><?php _e( 'Select a Product', 'wp-mms' ); ?></option><?php foreach ( $finished_goods as $product ) : ?><option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $product_id, $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option><?php endforeach; ?></select></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_bom_id"><?php _e( 'Bill of Materials Version', 'wp-mms' ); ?></label></th><td><select id="wp_mms_bom_id" name="wp_mms_bom_id" class="widefat"><option value=""><?php _e( 'Select a product first...', 'wp-mms' ); ?></option></select><p class="description"><?php _e('Select a product above to load its available BOM versions.', 'wp-mms'); ?></p></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_quantity"><?php _e( 'Quantity to Produce', 'wp-mms' ); ?></label></th><td><input type="number" id="wp_mms_quantity" name="wp_mms_quantity" value="<?php echo esc_attr( $quantity ); ?>" class="small-text" min="1" step="1" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_status"><?php _e( 'Order Status', 'wp-mms' ); ?></label></th><td><select id="wp_mms_status" name="wp_mms_status"><option value="pending" <?php selected( $status, 'pending' ); ?>><?php _e( 'Pending', 'wp-mms' ); ?></option><option value="in_progress" <?php selected( $status, 'in_progress' ); ?>><?php _e( 'In Progress', 'wp-mms' ); ?></option><option value="completed" <?php selected( $status, 'completed' ); ?>><?php _e( 'Completed', 'wp-mms' ); ?></option><option value="canceled" <?php selected( $status, 'canceled' ); ?>><?php _e( 'Canceled', 'wp-mms' ); ?></option></select></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_start_date"><?php _e( 'Start Date', 'wp-mms' ); ?></label></th><td><input type="date" id="wp_mms_start_date" name="wp_mms_start_date" value="<?php echo esc_attr( $start_date ); ?>" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_end_date"><?php _e( 'Expected Completion Date', 'wp-mms' ); ?></label></th><td><input type="date" id="wp_mms_end_date" name="wp_mms_end_date" value="<?php echo esc_attr( $end_date ); ?>" /></td></tr>
     </table>
     <?php
 }
 
 /**
- * Recursively explodes a BOM to determine the total raw materials required.
+ * Helper function to consume lots for a list of possible products (primary + alternatives),
+ * correctly handling partial stock and FIFO logic.
  *
- * @param int   $product_id The ID of the product to explode.
- * @param float $qty_needed The quantity of this product needed.
- * @param array &$raw_materials Reference to an array to store the final list of raw materials.
- * @param array &$visited_boms  To prevent infinite loops.
+ * @param array $products_to_try      An ordered array of product IDs to consume from (primary first, then alternatives).
+ * @param float $qty_needed           The total quantity of the component that needs to be consumed.
+ * @param array $consumed_lots_record A referenced array to store the record of which lots were consumed.
+ * @param array $affected_products    A referenced array to store the IDs of all products whose stock was changed.
  */
-function wp_mms_get_exploded_bom_recursive( $product_id, $qty_needed, &$raw_materials, &$visited_boms ) {
-    if ( in_array( $product_id, $visited_boms ) ) return;
-    $visited_boms[] = $product_id;
+function wp_mms_consume_lots_fifo( $products_to_try, $qty_needed, &$consumed_lots_record, &$affected_products ) {
+    $remaining_qty_to_consume = $qty_needed;
 
-    $bom_query = new WP_Query(['post_type' => 'wp_mms_bom', 'posts_per_page' => 1, 'meta_key' => '_wp_mms_finished_product_id', 'meta_value' => $product_id, 'fields' => 'ids']);
-    if ( !$bom_query->have_posts() ) return;
+    // Iterate through the products in the specified order (primary, then alternatives).
+    foreach ( $products_to_try as $product_id ) {
+        // If we've already fulfilled the required quantity, we can stop.
+        if ( $remaining_qty_to_consume <= 0 ) {
+            break;
+        }
 
-    $bom_id = $bom_query->posts[0];
+        $affected_products[] = $product_id;
+
+        // Get all lots for the current product, oldest first.
+        $lots_query = new WP_Query([
+            'post_type'      => 'wp_mms_lot',
+            'posts_per_page' => -1,
+            'orderby'        => 'date',
+            'order'          => 'ASC',
+            'meta_query'     => [
+                ['key' => '_wp_mms_product_id', 'value' => $product_id]
+            ]
+        ]);
+
+        if ( ! $lots_query->have_posts() ) {
+            continue; // No lots for this product, so try the next alternative.
+        }
+
+        // Go through the lots and consume the needed quantity.
+        while ( $lots_query->have_posts() ) {
+            $lots_query->the_post();
+            $lot_id = get_the_ID();
+            $lot_qty = floatval( get_post_meta( $lot_id, '_wp_mms_quantity', true ) );
+
+            // Determine how much to take from this specific lot.
+            $qty_to_take_from_this_lot = min( $lot_qty, $remaining_qty_to_consume );
+
+            if ( $qty_to_take_from_this_lot > 0 ) {
+                // Record exactly what was consumed.
+                $consumed_lots_record[ $lot_id ] = [
+                    'qty'        => $qty_to_take_from_this_lot,
+                    'product_id' => $product_id,
+                    'title'      => get_the_title()
+                ];
+
+                // Deduct the quantity from the lot.
+                $new_lot_qty = $lot_qty - $qty_to_take_from_this_lot;
+                if ( $new_lot_qty <= 0 ) {
+                    // Delete the lot if it's empty.
+                    wp_delete_post( $lot_id, true );
+                } else {
+                    update_post_meta( $lot_id, '_wp_mms_quantity', $new_lot_qty );
+                }
+
+                // Decrement the total remaining quantity we still need to find.
+                $remaining_qty_to_consume -= $qty_to_take_from_this_lot;
+            }
+
+            // If we've fulfilled the requirement, we can stop processing lots for this product.
+            if ( $remaining_qty_to_consume <= 0 ) {
+                break;
+            }
+        }
+        wp_reset_postdata();
+    }
+}
+
+/**
+ * Recursively consumes a BOM, respecting alternatives.
+ */
+function wp_mms_recursively_consume_bom( $bom_id, $quantity_produced, &$consumed_lots_record, &$affected_products, &$visited_boms ) {
+    if ( in_array( $bom_id, $visited_boms ) ) return;
+    $visited_boms[] = $bom_id;
     $components = get_post_meta( $bom_id, '_wp_mms_components', true );
     if ( empty( $components ) || !is_array( $components ) ) return;
-
     foreach ( $components as $item ) {
         $component_id = $item['product_id'];
         if ( empty( $component_id ) ) continue;
-
-        $component_qty_per_parent = floatval( $item['quantity'] );
-        $total_component_qty = $component_qty_per_parent * $qty_needed;
+        $total_component_qty_needed = floatval($item['quantity']) * $quantity_produced;
         $component_item_type = get_post_meta( $component_id, '_wp_mms_item_type', true );
-
         if ( 'finished_good' === $component_item_type ) {
-            wp_mms_get_exploded_bom_recursive( $component_id, $total_component_qty, $raw_materials, $visited_boms );
-        } else {
-            if ( ! isset( $raw_materials[ $component_id ] ) ) {
-                $raw_materials[ $component_id ] = 0;
+            $sub_bom_query = new WP_Query(['post_type' => 'wp_mms_bom', 'posts_per_page' => 1, 'meta_key' => '_wp_mms_finished_product_id', 'meta_value' => $component_id, 'fields' => 'ids']);
+            if ($sub_bom_query->have_posts()) {
+                wp_mms_recursively_consume_bom( $sub_bom_query->posts[0], $total_component_qty_needed, $consumed_lots_record, $affected_products, $visited_boms );
             }
-            $raw_materials[ $component_id ] += $total_component_qty;
+        } else {
+            $consumption_list = [$component_id];
+            if (!empty($item['alternatives']) && is_array($item['alternatives'])) {
+                $consumption_list = array_merge($consumption_list, $item['alternatives']);
+            }
+            wp_mms_consume_lots_fifo($consumption_list, $total_component_qty_needed, $consumed_lots_record, $affected_products );
         }
     }
 }
 
 /**
  * Save the meta box data for the Production Order CPT and handle inventory adjustments.
- *
- * @param int $post_id The ID of the post being saved.
  */
 function wp_mms_save_production_order_meta_box_data( $post_id ) {
-     if ( ! isset( $_POST['wp_mms_production_order_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_production_order_meta_box_nonce'], 'wp_mms_save_production_order_meta_box_data' ) ) {
-        return;
-    }
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-        return;
-    }
-    if ( ! current_user_can( 'edit_mms_production_order', $post_id ) ) {
-        return;
-    }
-    if ( get_post_type( $post_id ) !== 'wp_mms_production_order' ) {
-        return;
-    }
+     if ( ! isset( $_POST['wp_mms_production_order_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_production_order_meta_box_nonce'], 'wp_mms_save_production_order_meta_box_data' ) ) return;
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+    if ( ! current_user_can( 'edit_mms_production_order', $post_id ) ) return;
 
-    // Get old data before updating
     $old_status = get_post_meta( $post_id, '_wp_mms_status', true );
     $old_details = [
-        'product_id' => get_post_meta( $post_id, '_wp_mms_product_id', true ),
-        'quantity'   => get_post_meta( $post_id, '_wp_mms_quantity', true ),
-        'consumed_lots' => get_post_meta( $post_id, '_wp_mms_consumed_lots', true ),
+        'product_id' => get_post_meta( $post_id, '_wp_mms_product_id', true ), 'quantity' => get_post_meta( $post_id, '_wp_mms_quantity', true ),
+        'bom_id' => get_post_meta( $post_id, '_wp_mms_bom_id', true ), 'consumed_lots' => get_post_meta( $post_id, '_wp_mms_consumed_lots', true ),
         'output_lot_id' => get_post_meta( $post_id, '_wp_mms_output_lot_id', true ),
     ];
-
-    // Sanitize and save new data
     $new_status = isset( $_POST['wp_mms_status'] ) ? sanitize_text_field( $_POST['wp_mms_status'] ) : '';
     $new_details = [
-        'product_id' => isset( $_POST['wp_mms_product_id'] ) ? intval( $_POST['wp_mms_product_id'] ) : 0,
-        'quantity'   => isset( $_POST['wp_mms_quantity'] ) ? intval( $_POST['wp_mms_quantity'] ) : 0,
+        'product_id' => isset( $_POST['wp_mms_product_id'] ) ? intval( $_POST['wp_mms_product_id'] ) : 0, 'quantity' => isset( $_POST['wp_mms_quantity'] ) ? intval( $_POST['wp_mms_quantity'] ) : 0,
+        'bom_id' => isset( $_POST['wp_mms_bom_id'] ) ? intval( $_POST['wp_mms_bom_id'] ) : 0,
     ];
-
     $fields = [
-        'wp_mms_product_id'   => 'intval',
-        'wp_mms_quantity'     => 'intval',
-        'wp_mms_status'       => 'sanitize_text_field',
-        'wp_mms_start_date'   => 'sanitize_text_field',
-        'wp_mms_end_date'     => 'sanitize_text_field',
+        'wp_mms_product_id' => 'intval', 'wp_mms_bom_id' => 'intval', 'wp_mms_quantity' => 'intval', 'wp_mms_status' => 'sanitize_text_field',
+        'wp_mms_start_date' => 'sanitize_text_field', 'wp_mms_end_date' => 'sanitize_text_field',
     ];
     foreach ( $fields as $key => $sanitize_callback ) {
         if ( isset( $_POST[ $key ] ) ) {
-            $value = call_user_func( $sanitize_callback, $_POST[ $key ] );
-            update_post_meta( $post_id, '_' . $key, $value );
+            update_post_meta( $post_id, '_' . $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
         }
     }
 
-    // --- FIFO Lot-Based Inventory Adjustment Logic ---
     $adjust_inventory_for_production = function( $prod_order_id, $details, $direction ) {
         $product_id = $details['product_id'];
         $quantity_produced = $details['quantity'];
-        $affected_products = []; // Track products whose stock needs recalculating.
-
-        if ( empty( $product_id ) || empty( $quantity_produced ) ) {
-            return;
-        }
+        $bom_id = $details['bom_id'];
+        $affected_products = [];
+        if ( empty( $product_id ) || empty( $quantity_produced ) || empty($bom_id) ) return;
 
         if ( 'complete' === $direction ) {
-            $raw_materials_needed = [];
-            $visited_boms = [];
-            wp_mms_get_exploded_bom_recursive( $product_id, $quantity_produced, $raw_materials_needed, $visited_boms );
-
             $consumed_lots_record = [];
-            foreach ( $raw_materials_needed as $material_id => $qty_to_consume ) {
-                $affected_products[] = $material_id;
-                $lots_query = new WP_Query([
-                    'post_type' => 'wp_mms_lot', 'posts_per_page' => -1, 'orderby' => 'date', 'order' => 'ASC',
-                    'meta_query' => [ ['key' => '_wp_mms_product_id', 'value' => $material_id] ]
-                ]);
-
-                if ( $lots_query->have_posts() ) {
-                    while ( $lots_query->have_posts() && $qty_to_consume > 0 ) {
-                        $lots_query->the_post();
-                        $lot_id = get_the_ID();
-                        $lot_qty = floatval( get_post_meta( $lot_id, '_wp_mms_quantity', true ) );
-                        $qty_taken = min( $lot_qty, $qty_to_consume );
-
-                        // Enhance the consumption record for robust restoration
-                        $consumed_lots_record[$lot_id] = [
-                            'qty' => $qty_taken,
-                            'product_id' => $material_id,
-                            'title' => get_the_title()
-                        ];
-
-                        $new_lot_qty = $lot_qty - $qty_taken;
-                        $qty_to_consume -= $qty_taken;
-
-                        if ( $new_lot_qty <= 0 ) {
-                            wp_delete_post( $lot_id, true );
-                        } else {
-                            update_post_meta( $lot_id, '_wp_mms_quantity', $new_lot_qty );
-                        }
-                    }
-                }
-                wp_reset_postdata();
-            }
+            $visited_boms = [];
+            wp_mms_recursively_consume_bom( $bom_id, $quantity_produced, $consumed_lots_record, $affected_products, $visited_boms );
             update_post_meta( $prod_order_id, '_wp_mms_consumed_lots', $consumed_lots_record );
-
-            // Create a new lot for the finished good.
-            $output_lot_id = wp_insert_post([
-                'post_title' => 'PROD-' . $prod_order_id,
-                'post_type' => 'wp_mms_lot', 'post_status' => 'publish',
-            ]);
+            $output_lot_id = wp_insert_post(['post_title' => 'PROD-' . $prod_order_id, 'post_type' => 'wp_mms_lot', 'post_status' => 'publish']);
             if ( !is_wp_error($output_lot_id) ) {
                 update_post_meta( $output_lot_id, '_wp_mms_product_id', $product_id );
                 update_post_meta( $output_lot_id, '_wp_mms_quantity', $quantity_produced );
                 update_post_meta( $prod_order_id, '_wp_mms_output_lot_id', $output_lot_id );
             }
-
         } elseif ( 'revert' === $direction ) {
-            // Restore consumed lots.
             $consumed_lots = $details['consumed_lots'];
             if ( !empty($consumed_lots) && is_array($consumed_lots) ) {
                 foreach ( $consumed_lots as $lot_id => $data ) {
                     $affected_products[] = $data['product_id'];
                     $existing_lot = get_post($lot_id);
-                    if ($existing_lot) { // If lot still exists, just add quantity back
+                    if ($existing_lot) {
                         $lot_qty = floatval( get_post_meta( $lot_id, '_wp_mms_quantity', true ) );
                         update_post_meta( $lot_id, '_wp_mms_quantity', $lot_qty + $data['qty'] );
-                    } else { // If lot was deleted, re-create it
-                        $recreated_lot_id = wp_insert_post([
-                            'post_title' => $data['title'], 'post_type' => 'wp_mms_lot', 'post_status' => 'publish',
-                        ]);
+                    } else {
+                        $recreated_lot_id = wp_insert_post(['post_title' => $data['title'], 'post_type' => 'wp_mms_lot', 'post_status' => 'publish']);
                         if (!is_wp_error($recreated_lot_id)) {
                              update_post_meta( $recreated_lot_id, '_wp_mms_product_id', $data['product_id'] );
                              update_post_meta( $recreated_lot_id, '_wp_mms_quantity', $data['qty'] );
@@ -987,33 +609,24 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
                 }
             }
             delete_post_meta( $prod_order_id, '_wp_mms_consumed_lots' );
-
-            // Delete the output lot for the finished good.
             $output_lot_id = $details['output_lot_id'];
             if ( !empty($output_lot_id) ) {
                 wp_delete_post( $output_lot_id, true );
             }
             delete_post_meta( $prod_order_id, '_wp_mms_output_lot_id' );
         }
-
-        // Explicitly update stock for all affected products
         $affected_products[] = $product_id;
         foreach ( array_unique($affected_products) as $p_id ) {
             wp_mms_update_product_stock_from_lots( $p_id );
         }
     };
 
-    // Case 1: Status changed TO completed
     if ( $new_status === 'completed' && $old_status !== 'completed' ) {
         $adjust_inventory_for_production( $post_id, $new_details, 'complete' );
-    }
-    // Case 2: Status changed FROM completed
-    else if ( $new_status !== 'completed' && $old_status === 'completed' ) {
+    } else if ( $new_status !== 'completed' && $old_status === 'completed' ) {
         $adjust_inventory_for_production( $post_id, $old_details, 'revert' );
-    }
-    // Case 3: Status REMAINS completed, but details might have changed
-    else if ( $new_status === 'completed' && $old_status === 'completed' ) {
-        if ( $old_details['product_id'] != $new_details['product_id'] || $old_details['quantity'] != $new_details['quantity'] ) {
+    } else if ( $new_status === 'completed' && $old_status === 'completed' ) {
+        if ( $old_details['product_id'] != $new_details['product_id'] || $old_details['quantity'] != $new_details['quantity'] || $old_details['bom_id'] != $new_details['bom_id'] ) {
             $adjust_inventory_for_production( $post_id, $old_details, 'revert' );
             $adjust_inventory_for_production( $post_id, $new_details, 'complete' );
         }
@@ -1024,18 +637,12 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
     $new_scrapped_items = [];
     if ( isset( $_POST['_wp_mms_scrapped_items'] ) && is_array( $_POST['_wp_mms_scrapped_items'] ) ) {
         foreach ( $_POST['_wp_mms_scrapped_items'] as $item ) {
-            if ( empty( $item['product_id'] ) || !isset( $item['quantity'] ) || floatval($item['quantity']) <= 0 ) {
-                continue;
-            }
+            if ( empty( $item['product_id'] ) || !isset( $item['quantity'] ) || floatval($item['quantity']) <= 0 ) continue;
             $new_scrapped_items[] = [ 'product_id' => intval( $item['product_id'] ), 'quantity'   => floatval( $item['quantity'] ) ];
         }
     }
-
-    // Only proceed if scrap data has actually changed.
     if ( $old_scrapped_items != $new_scrapped_items ) {
         $affected_scrap_products = [];
-
-        // 1. Revert previously recorded scrap to avoid duplicating deductions.
         $old_consumed_scrap = get_post_meta( $post_id, '_wp_mms_consumed_scrap_lots', true );
         if ( !empty($old_consumed_scrap) && is_array($old_consumed_scrap) ) {
             foreach ( $old_consumed_scrap as $lot_id => $data ) {
@@ -1053,8 +660,6 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
                 }
             }
         }
-
-        // 2. Consume new scrap items via FIFO and calculate cost.
         $new_consumed_scrap = [];
         $total_scrap_cost = 0;
         if ( !empty($new_scrapped_items) ) {
@@ -1062,23 +667,18 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
                 $material_id = $scrap_item['product_id'];
                 $qty_to_consume = $scrap_item['quantity'];
                 $affected_scrap_products[] = $material_id;
-
                 $unit_cost = floatval(get_post_meta( $material_id, '_wp_mms_unit_cost', true ));
                 $total_scrap_cost += ($qty_to_consume * $unit_cost);
-
                 $lots_query = new WP_Query([ 'post_type' => 'wp_mms_lot', 'posts_per_page' => -1, 'orderby' => 'date', 'order' => 'ASC', 'meta_query' => [ ['key' => '_wp_mms_product_id', 'value' => $material_id] ] ]);
-
                 if ( $lots_query->have_posts() ) {
                     while ( $lots_query->have_posts() && $qty_to_consume > 0 ) {
                         $lots_query->the_post();
                         $lot_id = get_the_ID();
                         $lot_qty = floatval( get_post_meta( $lot_id, '_wp_mms_quantity', true ) );
                         $qty_taken = min( $lot_qty, $qty_to_consume );
-
                         $new_consumed_scrap[$lot_id] = [ 'qty' => $qty_taken, 'product_id' => $material_id, 'title' => get_the_title() ];
                         $new_lot_qty = $lot_qty - $qty_taken;
                         $qty_to_consume -= $qty_taken;
-
                         if ( $new_lot_qty <= 0 ) {
                             wp_delete_post( $lot_id, true );
                         } else {
@@ -1089,19 +689,15 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
                 wp_reset_postdata();
             }
         }
-
-        // 3. Update post meta for the scrap records.
         update_post_meta( $post_id, '_wp_mms_scrapped_items', $new_scrapped_items );
         update_post_meta( $post_id, '_wp_mms_consumed_scrap_lots', $new_consumed_scrap );
         update_post_meta( $post_id, '_wp_mms_total_scrap_cost', $total_scrap_cost );
-
-        // 4. Update stock for all affected products.
         foreach ( array_unique($affected_scrap_products) as $p_id ) {
             wp_mms_update_product_stock_from_lots( $p_id );
         }
     }
 }
-add_action( 'save_post', 'wp_mms_save_production_order_meta_box_data' );
+add_action( 'save_post_wp_mms_production_order', 'wp_mms_save_production_order_meta_box_data' );
 
 
 /**
@@ -1377,12 +973,14 @@ function wp_mms_save_lot_meta_box_data( $post_id ) {
     if ( ! isset( $_POST['wp_mms_lot_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_lot_meta_box_nonce'], 'wp_mms_save_lot_meta_box_data' ) ) {
         return;
     }
-    if ( get_post_type( $post_id ) !== 'wp_mms_lot' ) {
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
         return;
     }
     if ( ! current_user_can( 'edit_mms_lot', $post_id ) ) {
         return;
     }
+
+    $old_product_id = get_post_meta( $post_id, '_wp_mms_product_id', true );
 
     $fields = [
         '_wp_mms_product_id' => 'intval',
@@ -1390,13 +988,26 @@ function wp_mms_save_lot_meta_box_data( $post_id ) {
         '_wp_mms_expiry_date' => 'sanitize_text_field',
     ];
 
+    $new_product_id = $old_product_id;
     foreach ( $fields as $key => $sanitize_callback ) {
         if ( isset( $_POST[ $key ] ) ) {
-            update_post_meta( $post_id, $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
+            $value = call_user_func( $sanitize_callback, $_POST[ $key ] );
+            update_post_meta( $post_id, $key, $value );
+            if ( $key === '_wp_mms_product_id' ) {
+                $new_product_id = $value;
+            }
         }
     }
+
+    // After saving meta, update the stock for the affected products.
+    if ( $old_product_id && $old_product_id != $new_product_id ) {
+        wp_mms_update_product_stock_from_lots( $old_product_id );
+    }
+    if ( $new_product_id ) {
+        wp_mms_update_product_stock_from_lots( $new_product_id );
+    }
 }
-add_action( 'save_post', 'wp_mms_save_lot_meta_box_data' );
+add_action( 'save_post_wp_mms_lot', 'wp_mms_save_lot_meta_box_data' );
 
 /**
  * Add meta boxes for the Requisition CPT.
@@ -1551,9 +1162,6 @@ function wp_mms_save_requisition_meta_box_data( $post_id ) {
     if ( ! current_user_can( 'edit_mms_requisition', $post_id ) ) {
         return;
     }
-    if ( get_post_type( $post_id ) !== 'wp_mms_requisition' ) {
-        return;
-    }
 
     // Only allow users with publish caps to change the status
     if ( isset( $_POST['wp_mms_status'] ) && current_user_can('publish_mms_requisitions') ) {
@@ -1579,4 +1187,3 @@ function wp_mms_save_requisition_meta_box_data( $post_id ) {
     }
     update_post_meta( $post_id, '_wp_mms_requested_items', $new_items );
 }
-add_action( 'save_post', 'wp_mms_save_requisition_meta_box_data' );

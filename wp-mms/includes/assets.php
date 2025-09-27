@@ -59,8 +59,11 @@ function wp_mms_admin_enqueue_assets( $hook ) {
             $localized_data['products'] = $products;
         }
 
-        // Data for Production Order screen (for scrap)
+        // Data for Production Order screen
         if ( 'wp_mms_production_order' === $post->post_type ) {
+            $localized_data['get_boms_nonce'] = wp_create_nonce( 'get_boms_for_product_nonce' );
+            $localized_data['selected_bom_id'] = get_post_meta( $post->ID, '_wp_mms_bom_id', true );
+
             $product_id = get_post_meta( $post->ID, '_wp_mms_product_id', true );
             if( $product_id ) {
                 $raw_materials = wp_mms_get_exploded_bom_materials( $product_id );

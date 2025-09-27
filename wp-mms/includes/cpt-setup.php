@@ -187,8 +187,8 @@ function wp_mms_register_cpts() {
         'label'                 => __( 'Bill of Materials', 'wp-mms' ),
         'description'           => __( 'For defining the components of a finished product', 'wp-mms' ),
         'labels'                => $bom_labels,
-        'supports'              => array( 'title' ),
-        'hierarchical'          => false,
+        'supports'              => array( 'title', 'page-attributes' ),
+        'hierarchical'          => true,
         'public'                => true,
         'show_ui'               => true,
         'show_in_menu'          => false, // Will be added to our custom menu page
@@ -332,8 +332,8 @@ function wp_mms_register_cpts() {
         'label'                 => __( 'Lot / Batch', 'wp-mms' ),
         'description'           => __( 'For tracking specific lots or batches of products', 'wp-mms' ),
         'labels'                => $lot_labels,
-        'supports'              => array( 'title' ), // Lot Number will be the title
-        'hierarchical'          => false,
+        'supports'              => array( 'title', 'page-attributes' ),
+        'hierarchical'          => true,
         'public'                => false,
         'show_ui'               => true,
         'show_in_menu'          => 'edit.php?post_type=wp_mms_product', // Show under Products menu
