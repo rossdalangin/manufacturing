@@ -593,6 +593,192 @@ function wp_mms_save_bom_meta_box_data( $post_id ) {
 }
 add_action( 'save_post', 'wp_mms_save_bom_meta_box_data' );
 
+/**
+ * Add meta boxes for the Production Order CPT.
+ */
+function wp_mms_add_production_order_meta_boxes() {
+    add_meta_box(
+        'wp_mms_production_order_details',
+        __( 'Production Order Details', 'wp-mms' ),
+        'wp_mms_render_production_order_meta_box',
+        'wp_mms_production_order',
+        'normal',
+        'high'
+    );
+}
+add_action( 'add_meta_boxes', 'wp_mms_add_production_order_meta_boxes' );
+
+/**
+ * Render the HTML for the Production Order meta box.
+ *
+ * @param WP_Post $post The post object.
+ */
+function wp_mms_render_production_order_meta_box( $post ) {
+    wp_nonce_field( 'wp_mms_save_production_order_meta_box_data', 'wp_mms_production_order_meta_box_nonce' );
+
+    // Get existing values
+    $product_id = get_post_meta( $post->ID, '_wp_mms_product_id', true );
+    $quantity = get_post_meta( $post->ID, '_wp_mms_quantity', true );
+    $status = get_post_meta( $post->ID, '_wp_mms_status', true );
+    $start_date = get_post_meta( $post->ID, '_wp_mms_start_date', true );
+    $end_date = get_post_meta( $post->ID, '_wp_mms_end_date', true );
+
+    // Get finished goods
+    $finished_goods = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC', 'meta_key' => '_wp_mms_item_type', 'meta_value' => 'finished_good'] );
+    ?>
+    <table class="form-table">
+        <tr valign="top">
+            <th scope="row"><label for="wp_mms_product_id"><?php _e( 'Product to Produce', 'wp-mms' ); ?></label></th>
+            <td>
+                <select id="wp_mms_product_id" name="wp_mms_product_id" class="widefat">
+                    <option value=""><?php _e( 'Select a Product', 'wp-mms' ); ?></option>
+                    <?php foreach ( $finished_goods as $product ) : ?>
+                        <option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $product_id, $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </td>
+        </tr>
+        <tr valign="top">
+            <th scope="row"><label for="wp_mms_quantity"><?php _e( 'Quantity to Produce', 'wp-mms' ); ?></label></th>
+            <td><input type="number" id="wp_mms_quantity" name="wp_mms_quantity" value="<?php echo esc_attr( $quantity ); ?>" class="small-text" min="1" step="1" /></td>
+        </tr>
+        <tr valign="top">
+            <th scope="row"><label for="wp_mms_status"><?php _e( 'Order Status', 'wp-mms' ); ?></label></th>
+            <td>
+                <select id="wp_mms_status" name="wp_mms_status">
+                    <option value="pending" <?php selected( $status, 'pending' ); ?>><?php _e( 'Pending', 'wp-mms' ); ?></option>
+                    <option value="in_progress" <?php selected( $status, 'in_progress' ); ?>><?php _e( 'In Progress', 'wp-mms' ); ?></option>
+                    <option value="completed" <?php selected( $status, 'completed' ); ?>><?php _e( 'Completed', 'wp-mms' ); ?></option>
+                    <option value="canceled" <?php selected( $status, 'canceled' ); ?>><?php _e( 'Canceled', 'wp-mms' ); ?></option>
+                </select>
+            </td>
+        </tr>
+        <tr valign="top">
+            <th scope="row"><label for="wp_mms_start_date"><?php _e( 'Start Date', 'wp-mms' ); ?></label></th>
+            <td><input type="date" id="wp_mms_start_date" name="wp_mms_start_date" value="<?php echo esc_attr( $start_date ); ?>" /></td>
+        </tr>
+        <tr valign="top">
+            <th scope="row"><label for="wp_mms_end_date"><?php _e( 'Expected Completion Date', 'wp-mms' ); ?></label></th>
+            <td><input type="date" id="wp_mms_end_date" name="wp_mms_end_date" value="<?php echo esc_attr( $end_date ); ?>" /></td>
+        </tr>
+    </table>
+    <?php
+}
+
+/**
+ * Save the meta box data for the Production Order CPT and handle inventory adjustments.
+ *
+ * @param int $post_id The ID of the post being saved.
+ */
+function wp_mms_save_production_order_meta_box_data( $post_id ) {
+     if ( ! isset( $_POST['wp_mms_production_order_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_production_order_meta_box_nonce'], 'wp_mms_save_production_order_meta_box_data' ) ) {
+        return;
+    }
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+        return;
+    }
+    if ( ! current_user_can( 'edit_post', $post_id ) ) {
+        return;
+    }
+    if ( get_post_type( $post_id ) !== 'wp_mms_production_order' ) {
+        return;
+    }
+
+    // Get old data before updating
+    $old_status = get_post_meta( $post_id, '_wp_mms_status', true );
+    $old_details = [
+        'product_id' => get_post_meta( $post_id, '_wp_mms_product_id', true ),
+        'quantity'   => get_post_meta( $post_id, '_wp_mms_quantity', true ),
+    ];
+
+    // Sanitize and save new data
+    $new_status = isset( $_POST['wp_mms_status'] ) ? sanitize_text_field( $_POST['wp_mms_status'] ) : '';
+    $new_details = [
+        'product_id' => isset( $_POST['wp_mms_product_id'] ) ? intval( $_POST['wp_mms_product_id'] ) : 0,
+        'quantity'   => isset( $_POST['wp_mms_quantity'] ) ? intval( $_POST['wp_mms_quantity'] ) : 0,
+    ];
+
+    $fields = [
+        'wp_mms_product_id'   => 'intval',
+        'wp_mms_quantity'     => 'intval',
+        'wp_mms_status'       => 'sanitize_text_field',
+        'wp_mms_start_date'   => 'sanitize_text_field',
+        'wp_mms_end_date'     => 'sanitize_text_field',
+    ];
+    foreach ( $fields as $key => $sanitize_callback ) {
+        if ( isset( $_POST[ $key ] ) ) {
+            $value = call_user_func( $sanitize_callback, $_POST[ $key ] );
+            update_post_meta( $post_id, '_' . $key, $value );
+        }
+    }
+
+    // --- Inventory Adjustment Logic ---
+    $adjust_inventory_for_production = function( $details, $direction ) {
+        $product_id = $details['product_id'];
+        $quantity_produced = $details['quantity'];
+
+        if ( empty( $product_id ) || empty( $quantity_produced ) ) {
+            return;
+        }
+
+        // Find the BOM for this product
+        $bom_query = new WP_Query([
+            'post_type' => 'wp_mms_bom',
+            'posts_per_page' => 1,
+            'meta_key' => '_wp_mms_finished_product_id',
+            'meta_value' => $product_id
+        ]);
+
+        if ( !$bom_query->have_posts() ) {
+            return; // No BOM found for this product, can't adjust inventory.
+        }
+        $bom_id = $bom_query->posts[0]->ID;
+        $components = get_post_meta( $bom_id, '_wp_mms_components', true );
+
+        // Adjust stock for components
+        if ( ! empty( $components ) && is_array( $components ) ) {
+            foreach ( $components as $item ) {
+                $component_id = $item['product_id'];
+                $component_qty = floatval( $item['quantity'] );
+                $total_to_adjust = $component_qty * $quantity_produced;
+
+                $current_stock = floatval( get_post_meta( $component_id, '_wp_mms_stock_quantity', true ) );
+                // If completing, we subtract components. If reverting, we add them back.
+                $new_stock = ( $direction === 'complete' )
+                    ? $current_stock - $total_to_adjust
+                    : $current_stock + $total_to_adjust;
+                update_post_meta( $component_id, '_wp_mms_stock_quantity', $new_stock );
+            }
+        }
+
+        // Adjust stock for the finished good
+        $current_fg_stock = floatval( get_post_meta( $product_id, '_wp_mms_stock_quantity', true ) );
+        // If completing, we add finished goods. If reverting, we subtract them.
+        $new_fg_stock = ( $direction === 'complete' )
+            ? $current_fg_stock + $quantity_produced
+            : $current_fg_stock - $quantity_produced;
+        update_post_meta( $product_id, '_wp_mms_stock_quantity', $new_fg_stock );
+    };
+
+    // Case 1: Status changed TO completed
+    if ( $new_status === 'completed' && $old_status !== 'completed' ) {
+        $adjust_inventory_for_production( $new_details, 'complete' );
+    }
+    // Case 2: Status changed FROM completed
+    else if ( $new_status !== 'completed' && $old_status === 'completed' ) {
+        $adjust_inventory_for_production( $old_details, 'revert' );
+    }
+    // Case 3: Status REMAINS completed, but details might have changed
+    else if ( $new_status === 'completed' && $old_status === 'completed' ) {
+        if ( $old_details != $new_details ) {
+            // Revert the old transaction and apply the new one
+            $adjust_inventory_for_production( $old_details, 'revert' );
+            $adjust_inventory_for_production( $new_details, 'complete' );
+        }
+    }
+}
+add_action( 'save_post', 'wp_mms_save_production_order_meta_box_data' );
+
 
 /**
  * Calculate the total cost of a BOM and save it to the finished product.

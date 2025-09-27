@@ -66,6 +66,14 @@ function wp_mms_add_admin_menu() {
         'manage_options',
         'edit.php?post_type=wp_mms_bom'
     );
+
+    add_submenu_page(
+        'wp_mms',
+        __( 'Production Orders', 'wp-mms' ),
+        __( 'Production Orders', 'wp-mms' ),
+        'manage_options',
+        'edit.php?post_type=wp_mms_production_order'
+    );
 }
 add_action( 'admin_menu', 'wp_mms_add_admin_menu' );
 

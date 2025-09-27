@@ -173,5 +173,45 @@ function wp_mms_register_cpts() {
         'menu_icon'             => 'dashicons-hammer',
     );
     register_post_type( 'wp_mms_bom', $bom_args );
+
+    // Production Order CPT
+    $prod_order_labels = array(
+        'name'                  => _x( 'Production Orders', 'Post Type General Name', 'wp-mms' ),
+        'singular_name'         => _x( 'Production Order', 'Post Type Singular Name', 'wp-mms' ),
+        'menu_name'             => __( 'Production Orders', 'wp-mms' ),
+        'name_admin_bar'        => __( 'Production Order', 'wp-mms' ),
+        'archives'              => __( 'Production Order Archives', 'wp-mms' ),
+        'attributes'            => __( 'Production Order Attributes', 'wp-mms' ),
+        'parent_item_colon'     => __( 'Parent Production Order:', 'wp-mms' ),
+        'all_items'             => __( 'All Production Orders', 'wp-mms' ),
+        'add_new_item'          => __( 'Add New Production Order', 'wp-mms' ),
+        'add_new'               => __( 'Add New', 'wp-mms' ),
+        'new_item'              => __( 'New Production Order', 'wp-mms' ),
+        'edit_item'             => __( 'Edit Production Order', 'wp-mms' ),
+        'update_item'           => __( 'Update Production Order', 'wp-mms' ),
+        'view_item'             => __( 'View Production Order', 'wp-mms' ),
+        'view_items'            => __( 'View Production Orders', 'wp-mms' ),
+        'search_items'          => __( 'Search Production Order', 'wp-mms' ),
+    );
+    $prod_order_args = array(
+        'label'                 => __( 'Production Order', 'wp-mms' ),
+        'description'           => __( 'For managing production work orders', 'wp-mms' ),
+        'labels'                => $prod_order_labels,
+        'supports'              => array( 'title', 'editor' ),
+        'hierarchical'          => false,
+        'public'                => true,
+        'show_ui'               => true,
+        'show_in_menu'          => false, // Will be added to our custom menu page
+        'menu_position'         => 5,
+        'show_in_admin_bar'     => true,
+        'show_in_nav_menus'     => true,
+        'can_export'            => true,
+        'has_archive'           => true,
+        'exclude_from_search'   => false,
+        'publicly_queryable'    => true,
+        'capability_type'       => 'post',
+        'menu_icon'             => 'dashicons-admin-settings',
+    );
+    register_post_type( 'wp_mms_production_order', $prod_order_args );
 }
 add_action( 'init', 'wp_mms_register_cpts', 0 );
