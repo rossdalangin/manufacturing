@@ -76,6 +76,15 @@ function wp_mms_add_admin_menu() {
     );
 
     add_submenu_page(
+        'edit.php?post_type=wp_mms_production_order', // Child of Production Orders
+        __( 'Production Pipeline', 'wp-mms' ),
+        __( 'Production Pipeline', 'wp-mms' ),
+        'edit_mms_production_orders',
+        'wp_mms_kanban_board',
+        'wp_mms_kanban_page_html'
+    );
+
+    add_submenu_page(
         'wp_mms',
         __( 'Reports', 'wp-mms' ),
         __( 'Reports', 'wp-mms' ),

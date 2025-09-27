@@ -62,5 +62,23 @@ function wp_mms_admin_enqueue_assets( $hook ) {
         // Pass the data to the script
         wp_localize_script( 'wp-mms-admin-script', 'wp_mms_data', $localized_data );
     }
+
+    // Load Kanban-specific styles and scripts
+    if ( 'mms_production_order_page_wp_mms_kanban_board' === $hook ) {
+        wp_enqueue_style(
+            'wp-mms-admin-styles',
+            WP_MMS_PLUGIN_URL . 'assets/css/admin-styles.css',
+            [],
+            WP_MMS_VERSION
+        );
+
+        $deps = ['jquery', 'jquery-ui-sortable', 'jquery-ui-droppable'];
+        wp_enqueue_script( 'wp-mms-kanban-script', WP_MMS_PLUGIN_URL . 'assets/js/admin-scripts.js', $deps, WP_MMS_VERSION, true );
+
+        wp_localize_script( 'wp-mms-kanban-script', 'wp_mms_kanban_data', [
+            'ajax_url' => admin_url( 'admin-ajax.php' ),
+            'nonce'    => wp_create_nonce( 'wp_mms_kanban_nonce' ),
+        ]);
+    }
 }
 add_action( 'admin_enqueue_scripts', 'wp_mms_admin_enqueue_assets' );

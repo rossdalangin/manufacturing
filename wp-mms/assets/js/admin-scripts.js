@@ -83,4 +83,32 @@ jQuery(document).ready(function($) {
             });
         });
     });
+
+    // --- Kanban Board ---
+    if ($('#mms-kanban-board').length) {
+        $('.kanban-column-body').sortable({
+            connectWith: '.kanban-column-body',
+            handle: '.kanban-card',
+            placeholder: 'kanban-card-placeholder',
+            forcePlaceholderSize: true,
+            receive: function(event, ui) {
+                var orderId = ui.item.data('order-id');
+                var newStatus = $(this).data('status');
+
+                // Send the data via AJAX
+                $.post(wp_mms_kanban_data.ajax_url, {
+                    action: 'wp_mms_update_order_status',
+                    order_id: orderId,
+                    new_status: newStatus,
+                    nonce: wp_mms_kanban_data.nonce
+                }, function(response) {
+                    if (!response.success) {
+                        // On failure, alert the user and cancel the move to prevent a mismatch between the UI and the database.
+                        alert('Error: ' + response.data);
+                        $(ui.sender).sortable('cancel');
+                    }
+                });
+            }
+        }).disableSelection();
+    }
 });
