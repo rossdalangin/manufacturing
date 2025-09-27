@@ -448,3 +448,205 @@ function wp_mms_save_po_meta_box_data( $post_id ) {
     // Case 4 (implied): Status was not and is not 'received'. Do nothing.
 }
 add_action( 'save_post', 'wp_mms_save_po_meta_box_data' );
+
+/**
+ * Add meta boxes for the BOM CPT.
+ */
+function wp_mms_add_bom_meta_boxes() {
+    add_meta_box(
+        'wp_mms_bom_details',
+        __( 'Bill of Materials Details', 'wp-mms' ),
+        'wp_mms_render_bom_meta_box',
+        'wp_mms_bom',
+        'normal',
+        'high'
+    );
+}
+add_action( 'add_meta_boxes', 'wp_mms_add_bom_meta_boxes' );
+
+/**
+ * Render the HTML for the BOM meta box.
+ *
+ * @param WP_Post $post The post object.
+ */
+function wp_mms_render_bom_meta_box( $post ) {
+    wp_nonce_field( 'wp_mms_save_bom_meta_box_data', 'wp_mms_bom_meta_box_nonce' );
+
+    // Get existing values
+    $finished_product_id = get_post_meta( $post->ID, '_wp_mms_finished_product_id', true );
+    $components = get_post_meta( $post->ID, '_wp_mms_components', true );
+
+    // Get finished goods (products) and components (raw materials/sub-assemblies)
+    $finished_goods = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'meta_key' => '_wp_mms_item_type', 'meta_value' => 'finished_good'] );
+    $component_products = get_posts( ['post_type' => 'wp_mms_product', 'numberposts' => -1, 'meta_query' => [
+        'relation' => 'OR',
+        ['meta_key' => '_wp_mms_item_type', 'meta_value' => 'raw_material'],
+        ['meta_key' => '_wp_mms_item_type', 'meta_value' => 'component']
+    ]] );
+
+    ?>
+    <table class="form-table">
+        <tr valign="top">
+            <th scope="row"><label for="wp_mms_finished_product_id"><?php _e( 'Finished Product', 'wp-mms' ); ?></label></th>
+            <td>
+                <select id="wp_mms_finished_product_id" name="wp_mms_finished_product_id" class="widefat">
+                    <option value=""><?php _e( 'Select a Finished Product', 'wp-mms' ); ?></option>
+                    <?php foreach ( $finished_goods as $product ) : ?>
+                        <option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $finished_product_id, $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description"><?php _e( 'Select the final product that this Bill of Materials is for.', 'wp-mms' ); ?></p>
+            </td>
+        </tr>
+    </table>
+    <hr>
+    <h3><?php _e( 'Components', 'wp-mms' ); ?></h3>
+    <table id="bom-components" class="wp-list-table widefat fixed striped">
+        <thead>
+            <tr>
+                <th class="manage-column" style="width: 70%;"><?php _e( 'Component Product', 'wp-mms' ); ?></th>
+                <th class="manage-column" style="width: 15%;"><?php _e( 'Quantity', 'wp-mms' ); ?></th>
+                <th class="manage-column" style="width: 15%;"><?php _e( 'Actions', 'wp-mms' ); ?></th>
+            </tr>
+        </thead>
+        <tbody id="components-container">
+             <?php
+            if ( ! empty( $components ) && is_array( $components ) ) {
+                foreach ( $components as $i => $item ) {
+                    ?>
+                    <tr class="component-item">
+                        <td>
+                            <select name="wp_mms_components[<?php echo $i; ?>][product_id]" class="widefat">
+                                <option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option>
+                                <?php foreach ( $component_products as $product ) : ?>
+                                    <option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $item['product_id'], $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </td>
+                        <td><input type="number" name="wp_mms_components[<?php echo $i; ?>][quantity]" value="<?php echo esc_attr( $item['quantity'] ); ?>" class="small-text" min="0" step="any" /></td>
+                        <td><a href="#" class="button remove-component-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
+                    </tr>
+                    <?php
+                }
+            }
+            ?>
+        </tbody>
+    </table>
+     <p>
+        <a href="#" id="add-component-item" class="button button-primary"><?php _e( 'Add Component', 'wp-mms' ); ?></a>
+    </p>
+    <script type="text/template" id="component-item-template">
+        <tr class="component-item">
+            <td>
+                <select name="wp_mms_components[{index}][product_id]" class="widefat component-product-select">
+                     <option value=""><?php _e( 'Select a Component', 'wp-mms' ); ?></option>
+                </select>
+            </td>
+            <td><input type="number" name="wp_mms_components[{index}][quantity]" value="1" class="small-text" min="0" step="any" /></td>
+            <td><a href="#" class="button remove-component-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
+        </tr>
+    </script>
+    <?php
+}
+
+/**
+ * Save the meta box data for the BOM CPT.
+ *
+ * @param int $post_id The ID of the post being saved.
+ */
+function wp_mms_save_bom_meta_box_data( $post_id ) {
+    if ( ! isset( $_POST['wp_mms_bom_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_bom_meta_box_nonce'], 'wp_mms_save_bom_meta_box_data' ) ) {
+        return;
+    }
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+        return;
+    }
+    if ( ! current_user_can( 'edit_post', $post_id ) ) {
+        return;
+    }
+    if ( get_post_type( $post_id ) !== 'wp_mms_bom' ) {
+        return;
+    }
+
+    // Save finished product link
+    if ( isset( $_POST['wp_mms_finished_product_id'] ) ) {
+        update_post_meta( $post_id, '_wp_mms_finished_product_id', intval( $_POST['wp_mms_finished_product_id'] ) );
+    }
+
+    // Save components
+    $new_components = [];
+    if ( isset( $_POST['wp_mms_components'] ) && is_array( $_POST['wp_mms_components'] ) ) {
+        foreach ( $_POST['wp_mms_components'] as $item ) {
+            if ( empty( $item['product_id'] ) || !isset( $item['quantity'] ) ) {
+                continue;
+            }
+            $new_components[] = [
+                'product_id' => intval( $item['product_id'] ),
+                'quantity'   => floatval( $item['quantity'] ),
+            ];
+        }
+    }
+    update_post_meta( $post_id, '_wp_mms_components', $new_components );
+
+    // --- Auto Cost Roll-up ---
+    wp_mms_calculate_bom_cost( $post_id );
+}
+add_action( 'save_post', 'wp_mms_save_bom_meta_box_data' );
+
+
+/**
+ * Calculate the total cost of a BOM and save it to the finished product.
+ *
+ * @param int $bom_post_id The ID of the BOM post.
+ */
+function wp_mms_calculate_bom_cost( $bom_post_id ) {
+    $finished_product_id = get_post_meta( $bom_post_id, '_wp_mms_finished_product_id', true );
+    if ( empty( $finished_product_id ) ) {
+        return;
+    }
+
+    $components = get_post_meta( $bom_post_id, '_wp_mms_components', true );
+    $total_cost = 0;
+
+    if ( ! empty( $components ) && is_array( $components ) ) {
+        foreach ( $components as $item ) {
+            $component_id = $item['product_id'];
+            $quantity = floatval( $item['quantity'] );
+            $component_cost = floatval( get_post_meta( $component_id, '_wp_mms_unit_cost', true ) );
+            $total_cost += ( $component_cost * $quantity );
+        }
+    }
+
+    // Save the calculated cost on the finished product's post meta
+    update_post_meta( $finished_product_id, '_wp_mms_bom_cost', $total_cost );
+}
+
+/**
+ * Add a read-only meta box to Finished Goods to show the calculated BOM cost.
+ */
+function wp_mms_add_product_cost_meta_box() {
+    global $post;
+    if ( isset($post->ID) && get_post_meta( $post->ID, '_wp_mms_item_type', true ) === 'finished_good' ) {
+        add_meta_box(
+            'wp_mms_bom_cost_display',
+            __( 'Calculated BOM Cost', 'wp-mms' ),
+            'wp_mms_render_product_cost_meta_box',
+            'wp_mms_product',
+            'side',
+            'low'
+        );
+    }
+}
+add_action( 'add_meta_boxes_wp_mms_product', 'wp_mms_add_product_cost_meta_box' );
+
+/**
+ * Render the HTML for the product cost display meta box.
+ *
+ * @param WP_Post $post The post object.
+ */
+function wp_mms_render_product_cost_meta_box( $post ) {
+    $bom_cost = get_post_meta( $post->ID, '_wp_mms_bom_cost', true );
+    $cost_display = is_numeric( $bom_cost ) ? number_format_i18n( $bom_cost, 2 ) : 'N/A';
+    echo '<strong>' . esc_html( $cost_display ) . '</strong>';
+    echo '<p class="description">' . __( 'This cost is automatically calculated from the product\'s Bill of Materials.', 'wp-mms' ) . '</p>';
+}

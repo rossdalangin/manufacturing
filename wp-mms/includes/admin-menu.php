@@ -58,6 +58,14 @@ function wp_mms_add_admin_menu() {
         'manage_options',
         'edit.php?post_type=wp_mms_purchase_order'
     );
+
+    add_submenu_page(
+        'wp_mms',
+        __( 'Bills of Materials', 'wp-mms' ),
+        __( 'Bills of Materials', 'wp-mms' ),
+        'manage_options',
+        'edit.php?post_type=wp_mms_bom'
+    );
 }
 add_action( 'admin_menu', 'wp_mms_add_admin_menu' );
 

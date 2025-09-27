@@ -133,5 +133,45 @@ function wp_mms_register_cpts() {
         'menu_icon'             => 'dashicons-list-view',
     );
     register_post_type( 'wp_mms_purchase_order', $po_args );
+
+    // Bill of Materials (BOM) CPT
+    $bom_labels = array(
+        'name'                  => _x( 'Bills of Materials', 'Post Type General Name', 'wp-mms' ),
+        'singular_name'         => _x( 'Bill of Materials', 'Post Type Singular Name', 'wp-mms' ),
+        'menu_name'             => __( 'Bills of Materials', 'wp-mms' ),
+        'name_admin_bar'        => __( 'Bill of Materials', 'wp-mms' ),
+        'archives'              => __( 'BOM Archives', 'wp-mms' ),
+        'attributes'            => __( 'BOM Attributes', 'wp-mms' ),
+        'parent_item_colon'     => __( 'Parent BOM:', 'wp-mms' ),
+        'all_items'             => __( 'All Bills of Materials', 'wp-mms' ),
+        'add_new_item'          => __( 'Add New Bill of Materials', 'wp-mms' ),
+        'add_new'               => __( 'Add New', 'wp-mms' ),
+        'new_item'              => __( 'New Bill of Materials', 'wp-mms' ),
+        'edit_item'             => __( 'Edit Bill of Materials', 'wp-mms' ),
+        'update_item'           => __( 'Update Bill of Materials', 'wp-mms' ),
+        'view_item'             => __( 'View Bill of Materials', 'wp-mms' ),
+        'view_items'            => __( 'View Bills of Materials', 'wp-mms' ),
+        'search_items'          => __( 'Search Bill of Materials', 'wp-mms' ),
+    );
+    $bom_args = array(
+        'label'                 => __( 'Bill of Materials', 'wp-mms' ),
+        'description'           => __( 'For defining the components of a finished product', 'wp-mms' ),
+        'labels'                => $bom_labels,
+        'supports'              => array( 'title' ),
+        'hierarchical'          => false,
+        'public'                => true,
+        'show_ui'               => true,
+        'show_in_menu'          => false, // Will be added to our custom menu page
+        'menu_position'         => 5,
+        'show_in_admin_bar'     => true,
+        'show_in_nav_menus'     => true,
+        'can_export'            => true,
+        'has_archive'           => false,
+        'exclude_from_search'   => true,
+        'publicly_queryable'    => true,
+        'capability_type'       => 'post',
+        'menu_icon'             => 'dashicons-hammer',
+    );
+    register_post_type( 'wp_mms_bom', $bom_args );
 }
 add_action( 'init', 'wp_mms_register_cpts', 0 );
