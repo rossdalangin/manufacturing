@@ -30,6 +30,7 @@ require_once WP_MMS_PLUGIN_DIR . 'includes/cpt-setup.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/admin-menu.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/meta-boxes.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/assets.php';
+require_once WP_MMS_PLUGIN_DIR . 'includes/reports.php';
 
 // Initialize the plugin
 function wp_mms_run() {

@@ -74,6 +74,15 @@ function wp_mms_add_admin_menu() {
         'manage_options',
         'edit.php?post_type=wp_mms_production_order'
     );
+
+    add_submenu_page(
+        'wp_mms',
+        __( 'Reports', 'wp-mms' ),
+        __( 'Reports', 'wp-mms' ),
+        'manage_options',
+        'wp_mms_reports',
+        'wp_mms_reports_page_html'
+    );
 }
 add_action( 'admin_menu', 'wp_mms_add_admin_menu' );
 
