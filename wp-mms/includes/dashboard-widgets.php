@@ -2,6 +2,11 @@
 /**
  * Dashboard Widgets
  *
+ * This file handles the registration of all custom dashboard widgets for the MMS plugin.
+ * The "customizable dashboard" feature is achieved by leveraging the native WordPress
+ * dashboard functionality. Users can drag, drop, and toggle the visibility of these
+ * widgets via the "Screen Options" tab on their dashboard.
+ *
  * @package WP_MMS
  */
 
@@ -14,10 +19,25 @@ if ( ! defined( 'WPINC' ) ) {
  * Register the MMS Status dashboard widget.
  */
 function wp_mms_register_dashboard_widgets() {
+    // Main Status Widget
     wp_add_dashboard_widget(
-        'wp_mms_status_widget',         // Widget slug.
-        __( 'MMS Status', 'wp-mms' ),   // Title.
-        'wp_mms_render_status_widget'   // Display function.
+        'wp_mms_status_widget',
+        __( 'MMS Status', 'wp-mms' ),
+        'wp_mms_render_status_widget'
+    );
+
+    // Profitability Widget
+    wp_add_dashboard_widget(
+        'wp_mms_profitability_widget',
+        __( 'Profitability Snapshot', 'wp-mms' ),
+        'wp_mms_render_profitability_widget'
+    );
+
+    // Efficiency Widget
+    wp_add_dashboard_widget(
+        'wp_mms_efficiency_widget',
+        __( 'Production Efficiency (Last 30 Days)', 'wp-mms' ),
+        'wp_mms_render_efficiency_widget'
     );
 }
 add_action( 'wp_dashboard_setup', 'wp_mms_register_dashboard_widgets' );
@@ -117,4 +137,92 @@ function wp_mms_render_status_widget() {
         echo '<p style="color: green;">' . __( 'No purchase orders are overdue.', 'wp-mms' ) . '</p>';
     }
     wp_reset_postdata();
+}
+
+/**
+ * Render the content for the Profitability Snapshot widget.
+ */
+function wp_mms_render_profitability_widget() {
+    $products_query = new WP_Query([
+        'post_type' => 'wp_mms_product', 'posts_per_page' => -1, 'meta_query' => [['key' => '_wp_mms_item_type', 'value' => 'finished_good']]
+    ]);
+
+    $products = [];
+    if ( $products_query->have_posts() ) {
+        while ($products_query->have_posts()) {
+            $products_query->the_post();
+            $selling_price = (float) get_post_meta(get_the_ID(), '_wp_mms_selling_price', true);
+            $bom_cost = (float) get_post_meta(get_the_ID(), '_wp_mms_bom_cost', true);
+            if ($selling_price > 0) {
+                $products[] = [
+                    'name' => get_the_title(),
+                    'profit' => $selling_price - $bom_cost,
+                ];
+            }
+        }
+    }
+    wp_reset_postdata();
+
+    if (empty($products)) {
+        echo '<p>' . __('No finished goods with pricing information found.', 'wp-mms') . '</p>';
+        return;
+    }
+
+    // Sort by profit
+    usort($products, function($a, $b) {
+        return $b['profit'] <=> $a['profit'];
+    });
+
+    echo '<h4>' . __('Top 5 Most Profitable', 'wp-mms') . '</h4>';
+    echo '<ul>';
+    foreach (array_slice($products, 0, 5) as $p) {
+        printf('<li>%s: <strong>%s</strong></li>', esc_html($p['name']), esc_html(number_format_i18n($p['profit'], 2)));
+    }
+    echo '</ul><hr>';
+
+    echo '<h4>' . __('Top 5 Least Profitable', 'wp-mms') . '</h4>';
+    echo '<ul>';
+    foreach (array_slice(array_reverse($products), 0, 5) as $p) {
+         printf('<li>%s: <strong style="color:red;">%s</strong></li>', esc_html($p['name']), esc_html(number_format_i18n($p['profit'], 2)));
+    }
+    echo '</ul>';
+}
+
+/**
+ * Render the content for the Production Efficiency widget.
+ */
+function wp_mms_render_efficiency_widget() {
+    $orders_query = new WP_Query([
+        'post_type' => 'wp_mms_production_order',
+        'posts_per_page' => -1,
+        'date_query' => [['after' => '30 days ago', 'inclusive' => true]],
+        'meta_query' => [['key' => '_wp_mms_status', 'value' => 'completed']]
+    ]);
+
+    $total_planned = 0;
+    $total_actual = 0;
+    $order_count = 0;
+
+    if ($orders_query->have_posts()) {
+        while ($orders_query->have_posts()) {
+            $orders_query->the_post();
+            $planned_hours = (float) get_post_meta(get_the_ID(), '_wp_mms_planned_duration_hours', true);
+            $actual_hours = (float) get_post_meta(get_the_ID(), '_wp_mms_actual_duration_hours', true);
+
+            if ($planned_hours > 0 || $actual_hours > 0) {
+                $order_count++;
+                $total_planned += $planned_hours;
+                $total_actual += $actual_hours;
+            }
+        }
+    }
+    wp_reset_postdata();
+
+    if ($order_count > 0) {
+        $avg_variance = ($total_actual - $total_planned) / $order_count;
+        printf('<p>Average Variance: <strong style="font-size: 1.2em; color: %s;">%s hours</strong></p>', ($avg_variance > 0 ? 'red' : 'green'), esc_html(number_format($avg_variance, 2)));
+        echo '<p class="description">' . __('Based on', 'wp-mms') . ' ' . $order_count . ' ' . __('completed orders.', 'wp-mms') . '</p>';
+    } else {
+        echo '<p>' . __('No completed orders with duration data in the last 30 days.', 'wp-mms') . '</p>';
+    }
 }

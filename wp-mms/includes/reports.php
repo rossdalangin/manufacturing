@@ -11,6 +11,124 @@ if ( ! defined( 'WPINC' ) ) {
 }
 
 /**
+ * Display the production efficiency report page HTML.
+ */
+function wp_mms_efficiency_report_html() {
+    ?>
+    <div class="wrap">
+        <h1><?php _e( 'Production Efficiency Report', 'wp-mms' ); ?></h1>
+        <p><?php _e( 'This report compares the planned duration vs. the actual duration for completed production orders.', 'wp-mms' ); ?></p>
+
+        <?php
+        $orders_query = new WP_Query( [
+            'post_type' => 'wp_mms_production_order',
+            'posts_per_page' => -1,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'meta_query' => [
+                ['key' => '_wp_mms_status', 'value' => 'completed']
+            ]
+        ] );
+
+        if ( $orders_query->have_posts() ) :
+        ?>
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th><?php _e( 'Production Order', 'wp-mms' ); ?></th>
+                    <th><?php _e( 'Product', 'wp-mms' ); ?></th>
+                    <th><?php _e( 'Planned Duration (H)', 'wp-mms' ); ?></th>
+                    <th><?php _e( 'Actual Duration (H)', 'wp-mms' ); ?></th>
+                    <th><?php _e( 'Variance (H)', 'wp-mms' ); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php while ( $orders_query->have_posts() ) : $orders_query->the_post(); ?>
+                    <?php
+                    $order_id = get_the_ID();
+                    $product_id = get_post_meta($order_id, '_wp_mms_product_id', true);
+                    $planned_hours = (float) get_post_meta($order_id, '_wp_mms_planned_duration_hours', true);
+                    $actual_hours = (float) get_post_meta($order_id, '_wp_mms_actual_duration_hours', true);
+
+                    if ( $planned_hours <= 0 && $actual_hours <= 0 ) continue; // Skip orders with no data
+
+                    $variance = $actual_hours - $planned_hours;
+                    ?>
+                    <tr>
+                        <td><a href="<?php echo esc_url( get_edit_post_link( $order_id ) ); ?>"><?php the_title(); ?></a></td>
+                        <td><?php echo esc_html( get_the_title($product_id) ); ?></td>
+                        <td><?php echo esc_html( number_format($planned_hours, 2) ); ?></td>
+                        <td><?php echo esc_html( number_format($actual_hours, 2) ); ?></td>
+                        <td style="color: <?php echo ($variance > 0) ? 'red' : 'green'; ?>;"><?php echo esc_html( number_format($variance, 2) ); ?></td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+        <?php else : echo '<p>' . __( 'No completed production orders with duration data found.', 'wp-mms' ) . '</p>'; endif; wp_reset_postdata(); ?>
+    </div>
+    <?php
+}
+
+
+/**
+ * Display the profitability report page HTML.
+ */
+function wp_mms_profitability_report_html() {
+    ?>
+    <div class="wrap">
+        <h1><?php _e( 'Product Profitability Report', 'wp-mms' ); ?></h1>
+        <p><?php _e( 'This report shows the estimated per-unit profitability for each finished good.', 'wp-mms' ); ?></p>
+
+        <?php
+        $products_query = new WP_Query( [
+            'post_type' => 'wp_mms_product',
+            'posts_per_page' => -1,
+            'orderby' => 'title',
+            'order' => 'ASC',
+            'meta_query' => [
+                [
+                    'key' => '_wp_mms_item_type',
+                    'value' => 'finished_good',
+                ]
+            ]
+        ] );
+
+        if ( $products_query->have_posts() ) :
+        ?>
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th scope="col"><?php _e( 'Product Name', 'wp-mms' ); ?></th>
+                    <th scope="col"><?php _e( 'BOM Cost', 'wp-mms' ); ?></th>
+                    <th scope="col"><?php _e( 'Selling Price', 'wp-mms' ); ?></th>
+                    <th scope="col"><?php _e( 'Per-Unit Profit', 'wp-mms' ); ?></th>
+                    <th scope="col"><?php _e( 'Profit Margin', 'wp-mms' ); ?></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php while ( $products_query->have_posts() ) : $products_query->the_post(); ?>
+                    <?php
+                    $bom_cost = (float) get_post_meta( get_the_ID(), '_wp_mms_bom_cost', true );
+                    $selling_price = (float) get_post_meta( get_the_ID(), '_wp_mms_selling_price', true );
+                    $profit = $selling_price - $bom_cost;
+                    $margin = ($selling_price > 0) ? ($profit / $selling_price) * 100 : 0;
+                    ?>
+                    <tr>
+                        <td><a href="<?php echo esc_url( get_edit_post_link( get_the_ID() ) ); ?>"><?php the_title(); ?></a></td>
+                        <td><?php echo esc_html( number_format_i18n( $bom_cost, 2 ) ); ?></td>
+                        <td><?php echo esc_html( number_format_i18n( $selling_price, 2 ) ); ?></td>
+                        <td><?php echo esc_html( number_format_i18n( $profit, 2 ) ); ?></td>
+                        <td><?php echo esc_html( number_format( $margin, 2 ) ); ?>%</td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+        <?php else : echo '<p>' . __( 'No finished good products with pricing information found.', 'wp-mms' ) . '</p>'; endif; wp_reset_postdata(); ?>
+    </div>
+    <?php
+}
+
+/**
  * Handle the CSV export request for the inventory report.
  */
 function wp_mms_handle_inventory_export() {
@@ -108,105 +226,6 @@ function wp_mms_handle_supplier_export() {
     }
 }
 add_action( 'admin_init', 'wp_mms_handle_supplier_export' );
-
-/**
- * Get and process capacity planning data.
- * @return array
- */
-function wp_mms_get_capacity_planning_data() {
-    // 1. Get all work centers and initialize their load to 0.
-    $work_centers_query = new WP_Query(['post_type' => 'wp_mms_work_center', 'posts_per_page' => -1]);
-    $capacity_data = [];
-    if ($work_centers_query->have_posts()) {
-        while ($work_centers_query->have_posts()) {
-            $work_centers_query->the_post();
-            $capacity_data[get_the_ID()] = [
-                'name' => get_the_title(),
-                'total_load' => 0,
-            ];
-        }
-    }
-    wp_reset_postdata();
-
-    // 2. Get all active production orders.
-    $production_orders_query = new WP_Query([
-        'post_type' => 'wp_mms_production_order',
-        'posts_per_page' => -1,
-        'meta_query' => [
-            [
-                'key' => '_wp_mms_status',
-                'value' => ['pending', 'in_progress'],
-                'compare' => 'IN',
-            ],
-        ],
-    ]);
-
-    // 3. Loop through orders and calculate load.
-    if ($production_orders_query->have_posts()) {
-        while ($production_orders_query->have_posts()) {
-            $production_orders_query->the_post();
-            $order_id = get_the_ID();
-            $quantity = (int) get_post_meta($order_id, '_wp_mms_quantity', true);
-            $routing_id = (int) get_post_meta($order_id, '_wp_mms_routing_id', true);
-
-            if (!$routing_id || !$quantity) {
-                continue;
-            }
-
-            $routing_steps = get_post_meta($routing_id, '_wp_mms_routing_steps', true);
-            if (empty($routing_steps) || !is_array($routing_steps)) {
-                continue;
-            }
-
-            foreach ($routing_steps as $step) {
-                $work_center_id = isset($step['work_center_id']) ? (int) $step['work_center_id'] : 0;
-                if ($work_center_id && isset($capacity_data[$work_center_id])) {
-                    $setup_time = isset($step['setup_time']) ? (float) $step['setup_time'] : 0;
-                    $run_time = isset($step['run_time']) ? (float) $step['run_time'] : 0;
-                    $step_load = $setup_time + ($run_time * $quantity);
-                    $capacity_data[$work_center_id]['total_load'] += $step_load;
-                }
-            }
-        }
-    }
-    wp_reset_postdata();
-
-    return $capacity_data;
-}
-
-/**
- * Display the capacity planning report page HTML.
- */
-function wp_mms_capacity_planning_report_html() {
-    ?>
-    <div class="wrap">
-        <h1><?php _e( 'Capacity Planning Report', 'wp-mms' ); ?></h1>
-        <p><?php _e( 'This report shows the total scheduled production load (in hours) for each work center based on all pending and in-progress production orders.', 'wp-mms' ); ?></p>
-
-        <?php
-        $capacity_data = wp_mms_get_capacity_planning_data();
-        if ( !empty($capacity_data) ) :
-        ?>
-        <table class="wp-list-table widefat fixed striped">
-            <thead>
-                <tr>
-                    <th scope="col"><?php _e( 'Work Center', 'wp-mms' ); ?></th>
-                    <th scope="col"><?php _e( 'Total Scheduled Load (Hours)', 'wp-mms' ); ?></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ( $capacity_data as $wc_id => $data ) : ?>
-                    <tr>
-                        <td><a href="<?php echo esc_url( get_edit_post_link( $wc_id ) ); ?>"><?php echo esc_html( $data['name'] ); ?></a></td>
-                        <td><?php echo esc_html( number_format( $data['total_load'], 2 ) ); ?></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-        <?php else : echo '<p>' . __( 'No work centers or production orders found to generate a report.', 'wp-mms' ) . '</p>'; endif; ?>
-    </div>
-    <?php
-}
 
 /**
  * Get and process supplier performance data efficiently.

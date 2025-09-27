@@ -27,8 +27,6 @@ add_action( 'add_meta_boxes', 'wp_mms_add_supplier_meta_boxes' );
 
 /**
  * Render the HTML for the Supplier meta box.
- *
- * @param WP_Post $post The post object.
  */
 function wp_mms_render_supplier_meta_box( $post ) {
     wp_nonce_field( 'wp_mms_save_supplier_meta_box_data', 'wp_mms_supplier_meta_box_nonce' );
@@ -54,8 +52,6 @@ function wp_mms_render_supplier_meta_box( $post ) {
 
 /**
  * Save the meta box data when the post is saved.
- *
- * @param int $post_id The ID of the post being saved.
  */
 function wp_mms_save_supplier_meta_box_data( $post_id ) {
     if ( ! isset( $_POST['wp_mms_supplier_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_supplier_meta_box_nonce'], 'wp_mms_save_supplier_meta_box_data' ) ) return;
@@ -71,7 +67,6 @@ function wp_mms_save_supplier_meta_box_data( $post_id ) {
             update_post_meta( $post_id, '_' . $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
         }
     }
-
 }
 add_action( 'save_post_wp_mms_supplier', 'wp_mms_save_supplier_meta_box_data' );
 
@@ -94,8 +89,7 @@ function wp_mms_render_product_meta_box( $post ) {
     $item_type = get_post_meta( $post->ID, '_wp_mms_item_type', true );
     $location = get_post_meta( $post->ID, '_wp_mms_warehouse_location', true );
     $unit_cost = get_post_meta( $post->ID, '_wp_mms_unit_cost', true );
-    $default_routing_id = get_post_meta( $post->ID, '_wp_mms_default_routing_id', true );
-    $routings = get_posts( ['post_type' => 'wp_mms_routing', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC'] );
+    $selling_price = get_post_meta( $post->ID, '_wp_mms_selling_price', true );
     ?>
     <table class="form-table">
         <tr valign="top"><th scope="row"><label for="wp_mms_sku"><?php _e( 'SKU', 'wp-mms' ); ?></label></th><td><input type="text" id="wp_mms_sku" name="wp_mms_sku" value="<?php echo esc_attr( $sku ); ?>" class="regular-text" /></td></tr>
@@ -111,16 +105,8 @@ function wp_mms_render_product_meta_box( $post ) {
         <tr valign="top"><th scope="row"><label for="wp_mms_warehouse_location"><?php _e( 'Warehouse Location', 'wp-mms' ); ?></label></th><td><input type="text" id="wp_mms_warehouse_location" name="wp_mms_warehouse_location" value="<?php echo esc_attr( $location ); ?>" class="regular-text" /></td></tr>
         <tr valign="top"><th scope="row"><label for="wp_mms_unit_cost"><?php _e( 'Unit Cost', 'wp-mms' ); ?></label></th><td><input type="number" id="wp_mms_unit_cost" name="wp_mms_unit_cost" value="<?php echo esc_attr( $unit_cost ); ?>" class="small-text" min="0" step="0.01" /></td></tr>
         <tr valign="top" class="finished-good-field" style="display: <?php echo $item_type === 'finished_good' ? 'table-row' : 'none'; ?>;">
-            <th scope="row"><label for="wp_mms_default_routing_id"><?php _e( 'Default Routing', 'wp-mms' ); ?></label></th>
-            <td>
-                <select id="wp_mms_default_routing_id" name="wp_mms_default_routing_id" class="widefat">
-                    <option value=""><?php _e( 'None', 'wp-mms' ); ?></option>
-                    <?php foreach ( $routings as $routing ) : ?>
-                        <option value="<?php echo esc_attr( $routing->ID ); ?>" <?php selected( $default_routing_id, $routing->ID ); ?>><?php echo esc_html( $routing->post_title ); ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <p class="description"><?php _e( 'The default production workflow for this finished good.', 'wp-mms' ); ?></p>
-            </td>
+            <th scope="row"><label for="wp_mms_selling_price"><?php _e( 'Selling Price', 'wp-mms' ); ?></label></th>
+            <td><input type="number" id="wp_mms_selling_price" name="wp_mms_selling_price" value="<?php echo esc_attr( $selling_price ); ?>" class="small-text" min="0" step="0.01" /></td>
         </tr>
     </table>
     <?php
@@ -135,146 +121,16 @@ function wp_mms_save_product_meta_box_data( $post_id ) {
     if ( ! current_user_can( 'edit_mms_product', $post_id ) ) return;
     $fields = [
         'wp_mms_sku' => 'sanitize_text_field', 'wp_mms_reorder_point' => 'floatval', 'wp_mms_item_type' => 'sanitize_text_field',
-        'wp_mms_warehouse_location' => 'sanitize_text_field', 'wp_mms_unit_cost' => 'floatval', 'wp_mms_default_routing_id' => 'intval',
+        'wp_mms_warehouse_location' => 'sanitize_text_field', 'wp_mms_unit_cost' => 'floatval',
+        'wp_mms_selling_price' => 'floatval',
     ];
     foreach ( $fields as $key => $sanitize_callback ) {
         if ( isset( $_POST[ $key ] ) ) {
             update_post_meta( $post_id, '_' . $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
         }
     }
-
-    // Save routing assignments
-    $new_assignments = [];
-    if ( isset( $_POST['wp_mms_routing_assignments'] ) && is_array( $_POST['wp_mms_routing_assignments'] ) ) {
-        foreach ( $_POST['wp_mms_routing_assignments'] as $assignment ) {
-            $new_assignments[] = intval( $assignment );
-        }
-    }
-    update_post_meta( $post_id, '_wp_mms_routing_assignments', $new_assignments );
 }
 add_action( 'save_post_wp_mms_product', 'wp_mms_save_product_meta_box_data' );
-
-/**
- * Add meta boxes for the Routing CPT.
- */
-function wp_mms_add_routing_meta_boxes() {
-    add_meta_box(
-        'wp_mms_routing_details',
-        __( 'Routing Steps', 'wp-mms' ),
-        'wp_mms_render_routing_meta_box',
-        'wp_mms_routing',
-        'normal',
-        'high'
-    );
-}
-add_action( 'add_meta_boxes', 'wp_mms_add_routing_meta_boxes' );
-
-/**
- * Render the HTML for the Routing meta box.
- *
- * NOTE: This uses a sortable table for a functional drag-and-drop experience.
- * For a more advanced graphical workflow designer, a dedicated JS library
- * like GoJS or D3 could be integrated in a future version.
- *
- * @param WP_Post $post The post object.
- */
-function wp_mms_render_routing_meta_box( $post ) {
-    wp_nonce_field( 'wp_mms_save_routing_meta_box_data', 'wp_mms_routing_meta_box_nonce' );
-
-    $routing_steps = get_post_meta( $post->ID, '_wp_mms_routing_steps', true );
-    $work_centers = get_posts( ['post_type' => 'wp_mms_work_center', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC'] );
-    ?>
-    <p class="description"><?php _e( 'Define the sequence of operations for this routing. Drag and drop to reorder steps.', 'wp-mms' ); ?></p>
-    <table id="routing-steps" class="wp-list-table widefat fixed striped">
-        <thead>
-            <tr>
-                <th class="manage-column column-icon" style="width: 5%;"></th>
-                <th class="manage-column" style="width: 25%;"><?php _e( 'Operation Name', 'wp-mms' ); ?></th>
-                <th class="manage-column" style="width: 20%;"><?php _e( 'Work Center', 'wp-mms' ); ?></th>
-                <th class="manage-column" style="width: 15%;"><?php _e( 'Setup Time (H)', 'wp-mms' ); ?></th>
-                <th class="manage-column" style="width: 15%;"><?php _e( 'Run Time (H/unit)', 'wp-mms' ); ?></th>
-                <th class="manage-column" style="width: 20%;"><?php _e( 'Actions', 'wp-mms' ); ?></th>
-            </tr>
-        </thead>
-        <tbody id="routing-steps-container">
-            <?php
-            if ( ! empty( $routing_steps ) && is_array( $routing_steps ) ) :
-                foreach ( $routing_steps as $i => $step ) : ?>
-                    <tr class="routing-step-item">
-                        <td class="routing-step-handle" style="cursor: move; text-align: center;"><span class="dashicons dashicons-move"></span></td>
-                        <td><input type="text" name="wp_mms_routing_steps[<?php echo $i; ?>][name]" value="<?php echo esc_attr( $step['name'] ); ?>" class="widefat" /></td>
-                        <td>
-                            <select name="wp_mms_routing_steps[<?php echo $i; ?>][work_center_id]" class="widefat">
-                                <option value=""><?php _e( 'Select Work Center', 'wp-mms' ); ?></option>
-                                <?php foreach ( $work_centers as $wc ) : ?>
-                                    <option value="<?php echo esc_attr( $wc->ID ); ?>" <?php selected( $step['work_center_id'], $wc->ID ); ?>><?php echo esc_html( $wc->post_title ); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </td>
-                        <td><input type="number" name="wp_mms_routing_steps[<?php echo $i; ?>][setup_time]" value="<?php echo esc_attr( $step['setup_time'] ); ?>" class="small-text" min="0" step="any" /></td>
-                        <td><input type="number" name="wp_mms_routing_steps[<?php echo $i; ?>][run_time]" value="<?php echo esc_attr( $step['run_time'] ); ?>" class="small-text" min="0" step="any" /></td>
-                        <td><a href="#" class="button remove-routing-step-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
-                    </tr>
-                <?php endforeach;
-            endif;
-            ?>
-        </tbody>
-    </table>
-    <p><a href="#" id="add-routing-step-item" class="button button-primary"><?php _e( 'Add Operation Step', 'wp-mms' ); ?></a></p>
-
-    <script type="text/template" id="routing-step-template">
-        <tr class="routing-step-item">
-            <td class="routing-step-handle" style="cursor: move; text-align: center;"><span class="dashicons dashicons-move"></span></td>
-            <td><input type="text" name="wp_mms_routing_steps[{index}][name]" value="" class="widefat" /></td>
-            <td>
-                <select name="wp_mms_routing_steps[{index}][work_center_id]" class="widefat">
-                    <option value=""><?php _e( 'Select Work Center', 'wp-mms' ); ?></option>
-                    <?php foreach ( $work_centers as $wc ) : ?>
-                        <option value="<?php echo esc_attr( $wc->ID ); ?>"><?php echo esc_html( $wc->post_title ); ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </td>
-            <td><input type="number" name="wp_mms_routing_steps[{index}][setup_time]" value="0" class="small-text" min="0" step="any" /></td>
-            <td><input type="number" name="wp_mms_routing_steps[{index}][run_time]" value="0" class="small-text" min="0" step="any" /></td>
-            <td><a href="#" class="button remove-routing-step-item"><?php _e( 'Remove', 'wp-mms' ); ?></a></td>
-        </tr>
-    </script>
-    <?php
-}
-
-/**
- * Save the meta box data for the Routing CPT.
- *
- * @param int $post_id The ID of the post being saved.
- */
-function wp_mms_save_routing_meta_box_data( $post_id ) {
-    if ( ! isset( $_POST['wp_mms_routing_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_routing_meta_box_nonce'], 'wp_mms_save_routing_meta_box_data' ) ) {
-        return;
-    }
-    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-        return;
-    }
-    if ( ! current_user_can( 'edit_mms_routing', $post_id ) ) {
-        return;
-    }
-
-    $new_steps = [];
-    if ( isset( $_POST['wp_mms_routing_steps'] ) && is_array( $_POST['wp_mms_routing_steps'] ) ) {
-        foreach ( $_POST['wp_mms_routing_steps'] as $step ) {
-            if ( empty( $step['name'] ) ) {
-                continue;
-            }
-            $new_steps[] = [
-                'name'           => sanitize_text_field( $step['name'] ),
-                'work_center_id' => intval( $step['work_center_id'] ),
-                'setup_time'     => floatval( $step['setup_time'] ),
-                'run_time'       => floatval( $step['run_time'] ),
-            ];
-        }
-    }
-    update_post_meta( $post_id, '_wp_mms_routing_steps', $new_steps );
-}
-add_action( 'save_post_wp_mms_routing', 'wp_mms_save_routing_meta_box_data' );
 
 /**
  * Add meta boxes for the Purchase Order CPT.
@@ -582,25 +438,18 @@ function wp_mms_render_production_order_meta_box( $post ) {
         <tr valign="top"><th scope="row"><label for="wp_mms_status"><?php _e( 'Order Status', 'wp-mms' ); ?></label></th><td><select id="wp_mms_status" name="wp_mms_status"><option value="pending" <?php selected( $status, 'pending' ); ?>><?php _e( 'Pending', 'wp-mms' ); ?></option><option value="in_progress" <?php selected( $status, 'in_progress' ); ?>><?php _e( 'In Progress', 'wp-mms' ); ?></option><option value="completed" <?php selected( $status, 'completed' ); ?>><?php _e( 'Completed', 'wp-mms' ); ?></option><option value="canceled" <?php selected( $status, 'canceled' ); ?>><?php _e( 'Canceled', 'wp-mms' ); ?></option></select></td></tr>
         <tr valign="top"><th scope="row"><label for="wp_mms_start_date"><?php _e( 'Start Date', 'wp-mms' ); ?></label></th><td><input type="date" id="wp_mms_start_date" name="wp_mms_start_date" value="<?php echo esc_attr( $start_date ); ?>" /></td></tr>
         <tr valign="top"><th scope="row"><label for="wp_mms_end_date"><?php _e( 'Expected Completion Date', 'wp-mms' ); ?></label></th><td><input type="date" id="wp_mms_end_date" name="wp_mms_end_date" value="<?php echo esc_attr( $end_date ); ?>" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_planned_duration_hours"><?php _e( 'Planned Duration (Hours)', 'wp-mms' ); ?></label></th><td><input type="number" id="wp_mms_planned_duration_hours" name="wp_mms_planned_duration_hours" value="<?php echo esc_attr( get_post_meta( $post->ID, '_wp_mms_planned_duration_hours', true ) ); ?>" class="small-text" min="0" step="0.1" /></td></tr>
+        <tr valign="top">
+            <th scope="row"><label for="wp_mms_actual_duration_hours"><?php _e( 'Actual Duration (Hours)', 'wp-mms' ); ?></label></th>
+            <td>
+                <input type="text" id="wp_mms_actual_duration_hours" name="wp_mms_actual_duration_hours" value="<?php echo esc_attr( get_post_meta( $post->ID, '_wp_mms_actual_duration_hours', true ) ); ?>" class="small-text" readonly />
+                <?php if ( 'in_progress' === $status ) : ?>
+                <button class="button button-secondary" id="record-actual-duration"><?php _e( 'Record Actual Duration', 'wp-mms' ); ?></button>
+                <p class="description"><?php _e( 'Calculates time since status was set to "In Progress".', 'wp-mms' ); ?></p>
+                <?php endif; ?>
+            </td>
+        </tr>
     </table>
-    <hr>
-    <h3><?php _e( 'Production Routing', 'wp-mms' ); ?></h3>
-    <div id="production-routing-container">
-        <p class="description"><?php _e( 'Select a product above to load its default routing.', 'wp-mms' ); ?></p>
-        <table id="production-routing-steps" class="wp-list-table widefat fixed striped" style="display: none;">
-            <thead>
-                <tr>
-                    <th style="width: 40%;"><?php _e( 'Operation', 'wp-mms' ); ?></th>
-                    <th style="width: 30%;"><?php _e( 'Work Center', 'wp-mms' ); ?></th>
-                    <th style="width: 30%;"><?php _e( 'Assigned Worker', 'wp-mms' ); ?></th>
-                </tr>
-            </thead>
-            <tbody id="production-routing-steps-body">
-                <!-- Steps will be loaded here via AJAX -->
-            </tbody>
-        </table>
-    </div>
-    <input type="hidden" name="wp_mms_routing_id" id="wp_mms_routing_id" value="<?php echo esc_attr( get_post_meta( $post->ID, '_wp_mms_routing_id', true ) ); ?>" />
     <?php
 }
 
@@ -728,12 +577,17 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
     ];
     $fields = [
         'wp_mms_product_id' => 'intval', 'wp_mms_bom_id' => 'intval', 'wp_mms_quantity' => 'intval', 'wp_mms_status' => 'sanitize_text_field',
-        'wp_mms_start_date' => 'sanitize_text_field', 'wp_mms_end_date' => 'sanitize_text_field', 'wp_mms_routing_id' => 'intval',
+        'wp_mms_start_date' => 'sanitize_text_field', 'wp_mms_end_date' => 'sanitize_text_field', '_wp_mms_planned_duration_hours' => 'floatval',
     ];
     foreach ( $fields as $key => $sanitize_callback ) {
         if ( isset( $_POST[ $key ] ) ) {
             update_post_meta( $post_id, '_' . $key, call_user_func( $sanitize_callback, $_POST[ $key ] ) );
         }
+    }
+
+    // Record the start time when status changes to 'in_progress'
+    if ( $new_status === 'in_progress' && $old_status !== 'in_progress' ) {
+        update_post_meta( $post_id, '_wp_mms_actual_start_time', current_time( 'mysql' ) );
     }
 
     $adjust_inventory_for_production = function( $prod_order_id, $details, $direction ) {
@@ -862,6 +716,37 @@ function wp_mms_save_production_order_meta_box_data( $post_id ) {
     }
 }
 add_action( 'save_post_wp_mms_production_order', 'wp_mms_save_production_order_meta_box_data' );
+
+/**
+ * AJAX handler to calculate and record the actual duration of a production order.
+ */
+function wp_mms_record_actual_duration_ajax_handler() {
+    // Security checks
+    check_ajax_referer( 'record_actual_duration_nonce', 'nonce' );
+    if ( ! isset( $_POST['order_id'] ) || ! current_user_can( 'edit_mms_production_order', intval( $_POST['order_id'] ) ) ) {
+        wp_send_json_error( 'Invalid request.' );
+    }
+
+    $order_id = intval( $_POST['order_id'] );
+    $start_time_str = get_post_meta( $order_id, '_wp_mms_actual_start_time', true );
+
+    if ( empty( $start_time_str ) ) {
+        wp_send_json_error( 'Actual start time has not been recorded.' );
+    }
+
+    $start_time = strtotime( $start_time_str );
+    $current_time = current_time( 'timestamp' );
+
+    // Calculate duration in hours
+    $duration_hours = ( $current_time - $start_time ) / 3600;
+    $duration_formatted = number_format( $duration_hours, 2 );
+
+    // Save the calculated duration
+    update_post_meta( $order_id, '_wp_mms_actual_duration_hours', $duration_formatted );
+
+    wp_send_json_success( [ 'duration' => $duration_formatted ] );
+}
+add_action( 'wp_ajax_record_actual_duration', 'wp_mms_record_actual_duration_ajax_handler' );
 
 
 /**

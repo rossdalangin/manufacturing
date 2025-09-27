@@ -89,11 +89,12 @@ function wp_mms_admin_enqueue_assets( $hook ) {
         // Data for Production Order screen
         if ( 'wp_mms_production_order' === $post->post_type ) {
             $localized_data['get_boms_nonce'] = wp_create_nonce( 'get_boms_for_product_nonce' );
-            $localized_data['get_routing_nonce'] = wp_create_nonce( 'get_routing_for_product_nonce' );
+            $localized_data['record_actual_duration_nonce'] = wp_create_nonce( 'record_actual_duration_nonce' );
+            $localized_data['post_id'] = $post->ID;
             $localized_data['selected_bom_id'] = get_post_meta( $post->ID, '_wp_mms_bom_id', true );
             $worker_query = new WP_User_Query( ['role' => 'mms_operator', 'fields' => ['ID', 'display_name']] );
             $localized_data['workers'] = $worker_query->get_results();
-            $localized_data['routing_assignments'] = get_post_meta( $post->ID, '_wp_mms_routing_assignments', true ) ?: [];
+            $localized_data['production_steps'] = get_post_meta( $post->ID, '_wp_mms_production_steps', true ) ?: [];
             $product_id = get_post_meta( $post->ID, '_wp_mms_product_id', true );
             if( $product_id ) {
                 $raw_materials = wp_mms_get_exploded_bom_materials( $product_id );

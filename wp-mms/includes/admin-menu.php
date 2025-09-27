@@ -94,22 +94,6 @@ function wp_mms_add_admin_menu() {
 
     add_submenu_page(
         'wp_mms',
-        __( 'Work Centers', 'wp-mms' ),
-        __( 'Work Centers', 'wp-mms' ),
-        'edit_mms_work_centers',
-        'edit.php?post_type=wp_mms_work_center'
-    );
-
-    add_submenu_page(
-        'wp_mms',
-        __( 'Routings', 'wp-mms' ),
-        __( 'Routings', 'wp-mms' ),
-        'edit_mms_routings',
-        'edit.php?post_type=wp_mms_routing'
-    );
-
-    add_submenu_page(
-        'wp_mms',
         __( 'Reports', 'wp-mms' ),
         __( 'Reports', 'wp-mms' ),
         'view_mms_reports',
@@ -119,11 +103,20 @@ function wp_mms_add_admin_menu() {
 
     add_submenu_page(
         'wp_mms_reports', // Child of Reports page
-        __( 'Capacity Planning', 'wp-mms' ),
-        __( 'Capacity Planning', 'wp-mms' ),
+        __( 'Product Profitability', 'wp-mms' ),
+        __( 'Product Profitability', 'wp-mms' ),
         'view_mms_reports',
-        'wp_mms_capacity_planning',
-        'wp_mms_capacity_planning_report_html'
+        'wp_mms_profitability_report',
+        'wp_mms_profitability_report_html'
+    );
+
+    add_submenu_page(
+        'wp_mms_reports', // Child of Reports page
+        __( 'Production Efficiency', 'wp-mms' ),
+        __( 'Production Efficiency', 'wp-mms' ),
+        'view_mms_reports',
+        'wp_mms_efficiency_report',
+        'wp_mms_efficiency_report_html'
     );
 }
 add_action( 'admin_menu', 'wp_mms_add_admin_menu' );
