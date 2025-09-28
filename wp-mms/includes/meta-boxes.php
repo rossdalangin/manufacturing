@@ -128,6 +128,7 @@ add_action( 'add_meta_boxes', 'wp_mms_add_product_meta_boxes' );
 function wp_mms_render_product_meta_box( $post ) {
     wp_nonce_field( 'wp_mms_save_product_meta_box_data', 'wp_mms_product_meta_box_nonce' );
     $sku = get_post_meta( $post->ID, '_wp_mms_sku', true );
+    $barcode = get_post_meta( $post->ID, '_wp_mms_barcode', true );
     $stock_quantity = get_post_meta( $post->ID, '_wp_mms_stock_quantity', true );
     $reorder_point = get_post_meta( $post->ID, '_wp_mms_reorder_point', true );
     $item_type = get_post_meta( $post->ID, '_wp_mms_item_type', true );
@@ -137,6 +138,7 @@ function wp_mms_render_product_meta_box( $post ) {
     ?>
     <table class="form-table">
         <tr valign="top"><th scope="row"><label for="wp_mms_sku"><?php _e( 'SKU', 'wp-mms' ); ?></label></th><td><input type="text" id="wp_mms_sku" name="wp_mms_sku" value="<?php echo esc_attr( $sku ); ?>" class="regular-text" /></td></tr>
+        <tr valign="top"><th scope="row"><label for="wp_mms_barcode"><?php _e( 'Barcode/UPC', 'wp-mms' ); ?></label></th><td><input type="text" id="wp_mms_barcode" name="wp_mms_barcode" value="<?php echo esc_attr( $barcode ); ?>" class="regular-text" /></td></tr>
         <tr valign="top">
             <th scope="row"><label for="wp_mms_stock_quantity"><?php _e( 'Stock Quantity', 'wp-mms' ); ?></label></th>
             <td>
@@ -174,6 +176,7 @@ function wp_mms_save_product_meta_box_data( $post_id, $post, $update ) {
 
     $fields = [
         'wp_mms_sku'                => [ 'label' => 'SKU', 'sanitize' => 'sanitize_text_field' ],
+        'wp_mms_barcode'            => [ 'label' => 'Barcode/UPC', 'sanitize' => 'sanitize_text_field' ],
         'wp_mms_reorder_point'      => [ 'label' => 'Reorder Point', 'sanitize' => 'floatval' ],
         'wp_mms_item_type'          => [ 'label' => 'Item Type', 'sanitize' => 'sanitize_text_field' ],
         'wp_mms_warehouse_location' => [ 'label' => 'Warehouse Location', 'sanitize' => 'sanitize_text_field' ],
@@ -353,6 +356,33 @@ function wp_mms_save_po_meta_box_data( $post_id, $post, $update ) {
     if ( $new_status === 'received' && $old_status !== 'received' ) {
         $create_lots_for_po( $post_id, $new_line_items );
         update_post_meta( $post_id, '_wp_mms_date_received', current_time( 'Y-m-d' ) );
+
+        // --- Weighted Average Cost Calculation ---
+        $options = get_option( 'wp_mms_settings', ['inventory_valuation_method' => 'manual'] );
+        if ( 'weighted_average' === $options['inventory_valuation_method'] ) {
+            foreach( $new_line_items as $item ) {
+                $product_id = $item['product_id'];
+                $new_qty = floatval($item['quantity']);
+                $new_cost = floatval($item['unit_price']);
+
+                $old_qty = floatval(get_post_meta( $product_id, '_wp_mms_stock_quantity', true ));
+                $old_cost = floatval(get_post_meta( $product_id, '_wp_mms_unit_cost', true ));
+
+                if ( ($old_qty + $new_qty) > 0 ) {
+                    $new_weighted_cost = ( ($old_qty * $old_cost) + ($new_qty * $new_cost) ) / ($old_qty + $new_qty);
+                    $new_weighted_cost = round($new_weighted_cost, 2); // Round to 2 decimal places
+
+                    update_post_meta( $product_id, '_wp_mms_unit_cost', $new_weighted_cost );
+
+                    wp_mms_log_action( 'product_updated', [
+                        'object_id'   => $product_id, 'object_type' => 'Product', 'description' => 'updated Unit Cost (Weighted Avg)',
+                        'old_value'   => $old_cost, 'new_value'   => $new_weighted_cost,
+                    ]);
+                }
+            }
+        }
+        // --- End Weighted Average Cost Calculation ---
+
     } else if ( $new_status !== 'received' && $old_status === 'received' ) {
         $delete_lots_for_po( $post_id );
         delete_post_meta( $post_id, '_wp_mms_date_received' );
@@ -629,15 +659,20 @@ function wp_mms_render_production_order_meta_box( $post ) {
 
 /**
  * Helper function to consume lots for a list of possible products (primary + alternatives),
- * correctly handling partial stock and FIFO logic.
+ * correctly handling partial stock and respecting the chosen consumption method (FIFO/LIFO).
  *
  * @param array $products_to_try      An ordered array of product IDs to consume from (primary first, then alternatives).
  * @param float $qty_needed           The total quantity of the component that needs to be consumed.
  * @param array $consumed_lots_record A referenced array to store the record of which lots were consumed.
  * @param array $affected_products    A referenced array to store the IDs of all products whose stock was changed.
  */
-function wp_mms_consume_lots_fifo( $products_to_try, $qty_needed, &$consumed_lots_record, &$affected_products ) {
+function wp_mms_consume_component_lots( $products_to_try, $qty_needed, &$consumed_lots_record, &$affected_products ) {
     $remaining_qty_to_consume = $qty_needed;
+
+    // Get the chosen consumption method from settings.
+    $options = get_option( 'wp_mms_settings', ['lot_consumption_method' => 'fifo'] );
+    $consumption_method = $options['lot_consumption_method'];
+    $order = ( 'lifo' === $consumption_method ) ? 'DESC' : 'ASC';
 
     // Iterate through the products in the specified order (primary, then alternatives).
     foreach ( $products_to_try as $product_id ) {
@@ -648,12 +683,12 @@ function wp_mms_consume_lots_fifo( $products_to_try, $qty_needed, &$consumed_lot
 
         $affected_products[] = $product_id;
 
-        // Get all lots for the current product, oldest first.
+        // Get all lots for the current product, ordered by the chosen method.
         $lots_query = new WP_Query([
             'post_type'      => 'wp_mms_lot',
             'posts_per_page' => -1,
             'orderby'        => 'date',
-            'order'          => 'ASC',
+            'order'          => $order,
             'meta_query'     => [
                 ['key' => '_wp_mms_product_id', 'value' => $product_id]
             ]
@@ -725,7 +760,7 @@ function wp_mms_recursively_consume_bom( $bom_id, $quantity_produced, &$consumed
             if (!empty($item['alternatives']) && is_array($item['alternatives'])) {
                 $consumption_list = array_merge($consumption_list, $item['alternatives']);
             }
-            wp_mms_consume_lots_fifo($consumption_list, $total_component_qty_needed, $consumed_lots_record, $affected_products );
+            wp_mms_consume_component_lots($consumption_list, $total_component_qty_needed, $consumed_lots_record, $affected_products );
         }
     }
 }

@@ -127,6 +127,15 @@ function wp_mms_add_admin_menu() {
         'wp_mms_efficiency_report',
         'wp_mms_efficiency_report_html'
     );
+
+    add_submenu_page(
+        'wp_mms',
+        __( 'Settings', 'wp-mms' ),
+        __( 'Settings', 'wp-mms' ),
+        'manage_mms_options', // Only managers can change settings
+        'wp_mms_settings',
+        'wp_mms_settings_page_html'
+    );
 }
 add_action( 'admin_menu', 'wp_mms_add_admin_menu' );
 

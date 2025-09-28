@@ -394,3 +394,77 @@ function wp_mms_register_cpts() {
     register_post_type( 'wp_mms_audit_log', $audit_log_args );
 }
 add_action( 'init', 'wp_mms_register_cpts', 0 );
+
+/**
+ * Add custom columns to the Product list table.
+ *
+ * @param array $columns The existing columns.
+ * @return array The modified columns.
+ */
+function wp_mms_add_product_columns( $columns ) {
+    // Insert new column after title
+    $new_columns = [];
+    foreach ($columns as $key => $title) {
+        $new_columns[$key] = $title;
+        if ($key === 'title') {
+            $new_columns['barcode'] = __( 'Barcode/UPC', 'wp-mms' );
+            $new_columns['stock_quantity'] = __( 'Stock Quantity', 'wp-mms' );
+        }
+    }
+    return $new_columns;
+}
+add_filter( 'manage_wp_mms_product_posts_columns', 'wp_mms_add_product_columns' );
+
+/**
+ * Display data in the custom columns for the Product list table.
+ *
+ * @param string $column  The name of the custom column.
+ * @param int    $post_id The ID of the current post.
+ */
+function wp_mms_product_custom_column( $column, $post_id ) {
+    switch ( $column ) {
+        case 'barcode':
+            echo esc_html( get_post_meta( $post_id, '_wp_mms_barcode', true ) );
+            break;
+        case 'stock_quantity':
+            echo esc_html( get_post_meta( $post_id, '_wp_mms_stock_quantity', true ) ?: '0' );
+            break;
+    }
+}
+add_action( 'manage_wp_mms_product_posts_custom_column', 'wp_mms_product_custom_column', 10, 2 );
+
+/**
+ * Make the Barcode/UPC field searchable in the admin product list.
+ *
+ * @param WP_Query $query The WordPress query object.
+ */
+function wp_mms_product_search_by_meta( $query ) {
+    global $pagenow;
+    $post_type = 'wp_mms_product';
+    $search_term = $query->get( 's' );
+
+    // Check if we are on the correct admin page, doing a search, for the correct post type.
+    if ( is_admin() && $query->is_main_query() && $pagenow === 'edit.php' && $query->get( 'post_type' ) === $post_type && ! empty( $search_term ) ) {
+
+        $meta_query = $query->get( 'meta_query' );
+        if ( ! is_array( $meta_query ) ) {
+            $meta_query = [];
+        }
+
+        // Add our custom fields to the search
+        $meta_query['relation'] = 'OR';
+        $meta_query[] = [
+            'key'     => '_wp_mms_barcode',
+            'value'   => $search_term,
+            'compare' => 'LIKE',
+        ];
+        $meta_query[] = [
+            'key'     => '_wp_mms_sku',
+            'value'   => $search_term,
+            'compare' => 'LIKE',
+        ];
+
+        $query->set( 'meta_query', $meta_query );
+    }
+}
+add_action( 'pre_get_posts', 'wp_mms_product_search_by_meta' );
