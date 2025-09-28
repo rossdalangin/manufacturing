@@ -638,6 +638,22 @@ function wp_mms_render_production_order_meta_box( $post ) {
     <table class="form-table">
         <tr valign="top"><th scope="row"><label for="wp_mms_product_id"><?php _e( 'Product to Produce', 'wp-mms' ); ?></label></th><td><select id="wp_mms_product_id" name="wp_mms_product_id" class="widefat"><option value=""><?php _e( 'Select a Product', 'wp-mms' ); ?></option><?php foreach ( $finished_goods as $product ) : ?><option value="<?php echo esc_attr( $product->ID ); ?>" <?php selected( $product_id, $product->ID ); ?>><?php echo esc_html( $product->post_title ); ?></option><?php endforeach; ?></select></td></tr>
         <tr valign="top"><th scope="row"><label for="wp_mms_bom_id"><?php _e( 'Bill of Materials Version', 'wp-mms' ); ?></label></th><td><select id="wp_mms_bom_id" name="wp_mms_bom_id" class="widefat"><option value=""><?php _e( 'Select a product first...', 'wp-mms' ); ?></option></select><p class="description"><?php _e('Select a product above to load its available BOM versions.', 'wp-mms'); ?></p></td></tr>
+        <?php
+        $routing_id = get_post_meta( $post->ID, '_wp_mms_routing_id', true );
+        $routings = get_posts( ['post_type' => 'wp_mms_routing', 'numberposts' => -1, 'orderby' => 'title', 'order' => 'ASC'] );
+        ?>
+        <tr valign="top">
+            <th scope="row"><label for="wp_mms_routing_id"><?php _e( 'Production Routing', 'wp-mms' ); ?></label></th>
+            <td>
+                <select id="wp_mms_routing_id" name="wp_mms_routing_id" class="widefat">
+                    <option value=""><?php _e( 'Select a Routing Template', 'wp-mms' ); ?></option>
+                    <?php foreach ( $routings as $routing ) : ?>
+                        <option value="<?php echo esc_attr( $routing->ID ); ?>" <?php selected( $routing_id, $routing->ID ); ?>><?php echo esc_html( $routing->post_title ); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="description"><?php _e('Select the sequence of steps required to produce this item. This will be saved as a snapshot on this order.', 'wp-mms'); ?></p>
+            </td>
+        </tr>
         <tr valign="top"><th scope="row"><label for="wp_mms_quantity"><?php _e( 'Quantity to Produce', 'wp-mms' ); ?></label></th><td><input type="number" id="wp_mms_quantity" name="wp_mms_quantity" value="<?php echo esc_attr( $quantity ); ?>" class="small-text" min="1" step="1" /></td></tr>
         <tr valign="top"><th scope="row"><label for="wp_mms_status"><?php _e( 'Order Status', 'wp-mms' ); ?></label></th><td><select id="wp_mms_status" name="wp_mms_status"><option value="pending" <?php selected( $status, 'pending' ); ?>><?php _e( 'Pending', 'wp-mms' ); ?></option><option value="in_progress" <?php selected( $status, 'in_progress' ); ?>><?php _e( 'In Progress', 'wp-mms' ); ?></option><option value="completed" <?php selected( $status, 'completed' ); ?>><?php _e( 'Completed', 'wp-mms' ); ?></option><option value="canceled" <?php selected( $status, 'canceled' ); ?>><?php _e( 'Canceled', 'wp-mms' ); ?></option></select></td></tr>
         <tr valign="top"><th scope="row"><label for="wp_mms_start_date"><?php _e( 'Start Date', 'wp-mms' ); ?></label></th><td><input type="date" id="wp_mms_start_date" name="wp_mms_start_date" value="<?php echo esc_attr( $start_date ); ?>" /></td></tr>
@@ -788,6 +804,7 @@ function wp_mms_save_production_order_meta_box_data( $post_id, $post, $update ) 
     $fields = [
         'wp_mms_product_id'             => [ 'label' => 'Product', 'sanitize' => 'intval', 'is_title' => true ],
         'wp_mms_bom_id'                 => [ 'label' => 'BOM', 'sanitize' => 'intval', 'is_title' => true ],
+        'wp_mms_routing_id'             => [ 'label' => 'Routing', 'sanitize' => 'intval', 'is_title' => true ],
         'wp_mms_quantity'               => [ 'label' => 'Quantity', 'sanitize' => 'intval' ],
         'wp_mms_status'                 => [ 'label' => 'Status', 'sanitize' => 'sanitize_text_field' ],
         'wp_mms_start_date'             => [ 'label' => 'Start Date', 'sanitize' => 'sanitize_text_field' ],
@@ -816,6 +833,15 @@ function wp_mms_save_production_order_meta_box_data( $post_id, $post, $update ) 
 
     $old_status = $old_details['status'] ?? get_post_meta( $post_id, '_wp_mms_status', true );
     $new_status = $new_details['status'];
+
+    // If the routing has changed, copy the steps from the template to this order as a snapshot.
+    $old_routing_id = $old_details['routing_id'] ?? get_post_meta( $post_id, '_wp_mms_routing_id', true );
+    $new_routing_id = $new_details['routing_id'] ?? 0;
+
+    if ( $new_routing_id && $new_routing_id != $old_routing_id ) {
+        $routing_steps = get_post_meta( $new_routing_id, '_wp_mms_routing_steps', true );
+        update_post_meta( $post_id, '_wp_mms_production_steps', $routing_steps ?: [] );
+    }
 
     // Record the start time when status changes to 'in_progress'
     if ( $new_status === 'in_progress' && $old_status !== 'in_progress' ) {
@@ -1561,3 +1587,143 @@ function wp_mms_log_requisition_deletion( $post_id ) {
     }
 }
 add_action( 'before_delete_post', 'wp_mms_log_requisition_deletion' );
+
+/**
+ * Save the meta box data for the Routing CPT.
+ *
+ * @param int     $post_id The ID of the post being saved.
+ * @param WP_Post $post    The post object.
+ * @param bool    $update  Whether this is an existing post being updated or not.
+ */
+function wp_mms_save_routing_meta_box_data( $post_id, $post, $update ) {
+    if ( ! isset( $_POST['wp_mms_routing_meta_box_nonce'] ) || ! wp_verify_nonce( $_POST['wp_mms_routing_meta_box_nonce'], 'wp_mms_save_routing_meta_box_data' ) ) {
+        return;
+    }
+    if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+        return;
+    }
+    if ( ! current_user_can( 'edit_mms_routing', $post_id ) ) {
+        return;
+    }
+
+    $old_steps = get_post_meta( $post_id, '_wp_mms_routing_steps', true ) ?: [];
+    $new_steps = [];
+
+    if ( isset( $_POST['_wp_mms_routing_steps'] ) && is_array( $_POST['_wp_mms_routing_steps'] ) ) {
+        foreach ( $_POST['_wp_mms_routing_steps'] as $step ) {
+            $new_step = [];
+            $new_step['description'] = isset( $step['description'] ) ? sanitize_text_field( $step['description'] ) : '';
+            $new_step['setup_time'] = isset( $step['setup_time'] ) ? floatval( $step['setup_time'] ) : 0;
+            $new_step['run_time'] = isset( $step['run_time'] ) ? floatval( $step['run_time'] ) : 0;
+            $new_steps[] = $new_step;
+        }
+    }
+
+    if ( serialize( $old_steps ) !== serialize( $new_steps ) ) {
+        update_post_meta( $post_id, '_wp_mms_routing_steps', $new_steps );
+
+        if ( $update ) {
+             wp_mms_log_action( 'routing_updated', [
+                'object_id'   => $post_id,
+                'object_type' => 'Routing',
+                'description' => 'updated routing steps',
+                'old_value'   => $old_steps,
+                'new_value'   => $new_steps,
+            ]);
+        }
+    }
+
+    if ( ! $update ) {
+        wp_mms_log_action( 'routing_created', [
+            'object_id'   => $post_id,
+            'object_type' => 'Routing',
+            'description' => 'created routing',
+        ]);
+    }
+}
+add_action( 'save_post_wp_mms_routing', 'wp_mms_save_routing_meta_box_data', 10, 3 );
+
+/**
+ * Log the deletion of a routing.
+ */
+function wp_mms_log_routing_deletion( $post_id ) {
+    $post = get_post( $post_id );
+    if ( $post->post_type === 'wp_mms_routing' ) {
+        wp_mms_log_action( 'routing_deleted', [
+            'object_id'   => $post_id,
+            'object_type' => 'Routing',
+            'description' => 'deleted routing',
+            'old_value'   => $post->post_title,
+        ]);
+    }
+}
+add_action( 'before_delete_post', 'wp_mms_log_routing_deletion' );
+
+/**
+ * Add meta boxes for the Routing CPT.
+ */
+function wp_mms_add_routing_meta_boxes() {
+    add_meta_box(
+        'wp_mms_routing_steps',
+        __( 'Routing Steps', 'wp-mms' ),
+        'wp_mms_render_routing_steps_meta_box',
+        'wp_mms_routing',
+        'normal',
+        'high'
+    );
+}
+add_action( 'add_meta_boxes', 'wp_mms_add_routing_meta_boxes' );
+
+/**
+ * Render the HTML for the Routing Steps meta box (the designer).
+ *
+ * @param WP_Post $post The post object.
+ */
+function wp_mms_render_routing_steps_meta_box( $post ) {
+    wp_nonce_field( 'wp_mms_save_routing_meta_box_data', 'wp_mms_routing_meta_box_nonce' );
+    $steps = get_post_meta( $post->ID, '_wp_mms_routing_steps', true );
+    ?>
+    <div id="routing-steps-container">
+        <div id="routing-steps-list">
+            <?php
+            if ( ! empty( $steps ) && is_array( $steps ) ) :
+                foreach ( $steps as $i => $step ) : ?>
+                    <div class="routing-step">
+                        <span class="step-handle dashicons dashicons-move"></span>
+                        <div class="step-fields">
+                            <label><?php _e( 'Step Description', 'wp-mms' ); ?></label>
+                            <input type="text" name="_wp_mms_routing_steps[<?php echo esc_attr( $i ); ?>][description]" value="<?php echo esc_attr( $step['description'] ); ?>" class="large-text">
+
+                            <label><?php _e( 'Setup Time (Hours)', 'wp-mms' ); ?></label>
+                            <input type="number" name="_wp_mms_routing_steps[<?php echo esc_attr( $i ); ?>][setup_time]" value="<?php echo esc_attr( $step['setup_time'] ); ?>" class="small-text" step="0.1" min="0">
+
+                            <label><?php _e( 'Run Time per Unit (Hours)', 'wp-mms' ); ?></label>
+                            <input type="number" name="_wp_mms_routing_steps[<?php echo esc_attr( $i ); ?>][run_time]" value="<?php echo esc_attr( $step['run_time'] ); ?>" class="small-text" step="0.01" min="0">
+                        </div>
+                        <button type="button" class="button remove-step-button">Remove Step</button>
+                    </div>
+                <?php endforeach;
+            endif;
+            ?>
+        </div>
+        <button type="button" id="add-routing-step" class="button button-primary"><?php _e( 'Add Step', 'wp-mms' ); ?></button>
+    </div>
+
+    <script type="text/template" id="routing-step-template">
+        <div class="routing-step">
+            <span class="step-handle dashicons dashicons-move"></span>
+            <div class="step-fields">
+                <label><?php _e( 'Step Description', 'wp-mms' ); ?></label>
+                <input type="text" name="_wp_mms_routing_steps[{index}][description]" value="" class="large-text">
+
+                <label><?php _e( 'Setup Time (Hours)', 'wp-mms' ); ?></label>
+                <input type="number" name="_wp_mms_routing_steps[{index}][setup_time]" value="0" class="small-text" step="0.1" min="0">
+
+                <label><?php _e( 'Run Time per Unit (Hours)', 'wp-mms' ); ?></label>
+                <input type="number" name="_wp_mms_routing_steps[{index}][run_time]" value="0" class="small-text" step="0.01" min="0">
+            </div>
+            <button type="button" class="button remove-step-button">Remove Step</button>
+        </div>
+    </script>
+    <?php
+}

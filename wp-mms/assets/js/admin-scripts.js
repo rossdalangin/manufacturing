@@ -292,4 +292,44 @@ jQuery(document).ready(function($) {
             }
         });
     });
+
+    // --- Routing Designer ---
+    if ($('#routing-steps-list').length) {
+        // Function to re-index the routing step fields after a change
+        var reindexRoutingSteps = function() {
+            $('#routing-steps-list .routing-step').each(function(index) {
+                $(this).find('input, select, textarea').each(function() {
+                    var name = $(this).attr('name');
+                    if (name) {
+                        var newName = name.replace(/\[\d+\]/, '[' + index + ']');
+                        $(this).attr('name', newName);
+                    }
+                });
+            });
+        };
+
+        // Make the steps sortable
+        $('#routing-steps-list').sortable({
+            handle: '.step-handle',
+            placeholder: 'routing-step-placeholder',
+            forcePlaceholderSize: true,
+            update: function(event, ui) {
+                reindexRoutingSteps();
+            }
+        });
+
+        // Add a new routing step
+        $('#add-routing-step').on('click', function() {
+            var stepCount = $('#routing-steps-list .routing-step').length;
+            var template = $('#routing-step-template').html().replace(/{index}/g, stepCount);
+            $('#routing-steps-list').append(template);
+            reindexRoutingSteps(); // Ensure the new step has the correct index
+        });
+
+        // Remove a routing step
+        $('#routing-steps-container').on('click', '.remove-step-button', function() {
+            $(this).closest('.routing-step').remove();
+            reindexRoutingSteps();
+        });
+    }
 });

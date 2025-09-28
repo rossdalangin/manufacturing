@@ -36,6 +36,14 @@ function wp_mms_add_admin_menu() {
     );
 
     add_submenu_page(
+        'edit.php?post_type=wp_mms_production_order', // Child of Production Orders
+        __( 'Routings', 'wp-mms' ),
+        __( 'Routings', 'wp-mms' ),
+        'edit_mms_routings',
+        'edit.php?post_type=wp_mms_routing'
+    );
+
+    add_submenu_page(
         'wp_mms',
         __( 'Audit Trail', 'wp-mms' ),
         __( 'Audit Trail', 'wp-mms' ),

@@ -45,34 +45,39 @@
 }
 
 /* --- Routing Designer --- */
-#routing-steps-container .routing-step-item {
-    background: #fff;
+.routing-step {
     border: 1px solid #ddd;
-    box-shadow: 0 1px 1px rgba(0,0,0,0.04);
+    padding: 10px;
+    margin-bottom: 10px;
+    background: #f9f9f9;
+    display: flex;
+    align-items: center;
 }
 
-#routing-steps-container .routing-step-item td {
-    padding: 12px;
-    vertical-align: middle;
-}
-
-#routing-steps-container .routing-step-handle {
+.routing-step .step-handle {
     cursor: move;
-    color: #999;
+    color: #888;
+    margin-right: 10px;
 }
 
-#routing-steps-container .routing-step-handle:hover {
-    color: #333;
+.routing-step .step-fields {
+    flex-grow: 1;
+}
+
+.routing-step .step-fields label {
+    display: block;
+    margin-top: 5px;
+    font-weight: bold;
+}
+
+.remove-step-button {
+    margin-left: 10px;
 }
 
 /* Style for the sortable placeholder */
-#routing-steps-container .ui-sortable-placeholder {
+#routing-steps-list .ui-sortable-placeholder {
     background: #f0f0f1 !important;
     border: 1px dashed #ccc !important;
     visibility: visible !important;
-    height: 60px;
-}
-
-#routing-steps-container .ui-sortable-placeholder td {
-    height: 60px;
+    height: 100px; /* Adjust height to match the step item */
 }

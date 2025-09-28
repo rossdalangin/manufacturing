@@ -392,6 +392,51 @@ function wp_mms_register_cpts() {
         ],
     );
     register_post_type( 'wp_mms_audit_log', $audit_log_args );
+
+    // Production Routing CPT
+    $routing_labels = array(
+        'name'                  => _x( 'Routings', 'Post Type General Name', 'wp-mms' ),
+        'singular_name'         => _x( 'Routing', 'Post Type Singular Name', 'wp-mms' ),
+        'menu_name'             => __( 'Routings', 'wp-mms' ),
+        'name_admin_bar'        => __( 'Routing', 'wp-mms' ),
+        'all_items'             => __( 'All Routings', 'wp-mms' ),
+        'add_new_item'          => __( 'Add New Routing', 'wp-mms' ),
+        'add_new'               => __( 'Add New', 'wp-mms' ),
+        'new_item'              => __( 'New Routing', 'wp-mms' ),
+        'edit_item'             => __( 'Edit Routing', 'wp-mms' ),
+        'update_item'           => __( 'Update Routing', 'wp-mms' ),
+        'view_item'             => __( 'View Routing', 'wp-mms' ),
+        'search_items'          => __( 'Search Routings', 'wp-mms' ),
+        'not_found'             => __( 'No routings found', 'wp-mms' ),
+        'not_found_in_trash'    => __( 'No routings found in Trash', 'wp-mms' ),
+    );
+    $routing_args = array(
+        'label'                 => __( 'Routing', 'wp-mms' ),
+        'description'           => __( 'Defines the sequence of steps for production processes.', 'wp-mms' ),
+        'labels'                => $routing_labels,
+        'supports'              => array( 'title' ),
+        'hierarchical'          => false,
+        'public'                => false,
+        'show_ui'               => true,
+        'show_in_menu'          => false, // Will be added to a submenu
+        'show_in_admin_bar'     => true,
+        'can_export'            => true,
+        'exclude_from_search'   => true,
+        'publicly_queryable'    => false,
+        'capability_type'       => 'mms_routing',
+        'capabilities' => [
+            'edit_post'          => 'edit_mms_routing',
+            'read_post'          => 'read_mms_routing',
+            'delete_post'        => 'delete_mms_routing',
+            'edit_posts'         => 'edit_mms_routings',
+            'edit_others_posts'  => 'edit_others_mms_routings',
+            'publish_posts'      => 'publish_mms_routings',
+            'read_private_posts' => 'read_private_mms_routings',
+            'delete_posts'       => 'delete_mms_routings',
+        ],
+        'menu_icon'             => 'dashicons-arrow-right-alt2',
+    );
+    register_post_type( 'wp_mms_routing', $routing_args );
 }
 add_action( 'init', 'wp_mms_register_cpts', 0 );
 
