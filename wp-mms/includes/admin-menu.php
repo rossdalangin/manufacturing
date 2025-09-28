@@ -130,6 +130,15 @@ function wp_mms_add_admin_menu() {
 
     add_submenu_page(
         'wp_mms',
+        __( 'Integrations', 'wp-mms' ),
+        __( 'Integrations', 'wp-mms' ),
+        'manage_mms_options',
+        'wp_mms_integrations',
+        'wp_mms_integrations_page_html'
+    );
+
+    add_submenu_page(
+        'wp_mms',
         __( 'Settings', 'wp-mms' ),
         __( 'Settings', 'wp-mms' ),
         'manage_mms_options', // Only managers can change settings
