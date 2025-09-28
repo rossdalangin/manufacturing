@@ -36,6 +36,7 @@ require_once WP_MMS_PLUGIN_DIR . 'includes/dashboard-widgets.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/boms.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/audit-trail.php';
 require_once WP_MMS_PLUGIN_DIR . 'includes/settings.php';
+require_once WP_MMS_PLUGIN_DIR . 'includes/api.php';
 
 // Activation and deactivation hooks
 register_activation_hook( __FILE__, 'wp_mms_add_roles_and_caps' );
